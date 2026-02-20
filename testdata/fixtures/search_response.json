@@ -1,0 +1,22 @@
+{
+  "results": [
+    {
+      "title": "Python Programming Language",
+      "slug": "Python_programming_language",
+      "snippet": "Python is a high-level, general-purpose programming language...",
+      "relevanceScore": 0.95,
+      "viewCount": 125000
+    },
+    {
+      "title": "JavaScript",
+      "slug": "JavaScript",
+      "snippet": "JavaScript is a programming language that is one of the core technologies of the World Wide Web...",
+      "relevanceScore": 0.88,
+      "viewCount": 98000
+    }
+  ],
+  "totalCount": 2,
+  "facets": [],
+  "searchTimeMs": 45.2,
+  "detectedLanguage": "en"
+}

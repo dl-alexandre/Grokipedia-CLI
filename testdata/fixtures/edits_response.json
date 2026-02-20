@@ -1,0 +1,21 @@
+{
+  "editRequests": [
+    {
+      "id": "req-001",
+      "slug": "Python_programming_language",
+      "status": "EDIT_REQUEST_STATUS_PENDING",
+      "timestamp": 1702000000,
+      "editor": "user123"
+    },
+    {
+      "id": "req-002",
+      "slug": "JavaScript",
+      "status": "EDIT_REQUEST_STATUS_APPROVED",
+      "timestamp": 1701900000,
+      "editor": "user456"
+    }
+  ],
+  "totalCount": 2,
+  "hasMore": false,
+  "totalCountUnfiltered": 2
+}

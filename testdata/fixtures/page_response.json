@@ -1,0 +1,35 @@
+{
+  "page": {
+    "title": "Python Programming Language",
+    "slug": "Python_programming_language",
+    "content": "# Python Programming Language\n\nPython is a high-level, general-purpose programming language...",
+    "description": "Python is a high-level programming language",
+    "citations": [
+      {
+        "id": "1",
+        "title": "Python Official Documentation",
+        "url": "https://docs.python.org"
+      }
+    ],
+    "images": [
+      {
+        "caption": "Python Logo",
+        "url": "https://example.com/python-logo.png"
+      }
+    ],
+    "metadata": {
+      "categories": ["Programming", "Languages"],
+      "lastModified": 1702000000,
+      "version": "1.0"
+    },
+    "stats": {
+      "totalViews": 125000,
+      "qualityScore": 0.92
+    },
+    "linkedPages": {
+      "indexedSlugs": ["JavaScript", "Java"],
+      "unindexedSlugs": ["Ruby"]
+    }
+  },
+  "found": true
+}

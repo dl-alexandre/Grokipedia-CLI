@@ -1,0 +1,6 @@
+{
+  "maxSearchResults": 100,
+  "defaultSearchLimit": 12,
+  "apiVersion": "v1",
+  "supportedLanguages": ["en", "es", "fr"]
+}
