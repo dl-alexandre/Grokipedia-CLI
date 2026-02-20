@@ -140,9 +140,9 @@ func bindEnvVars(v *viper.Viper) {
 	_ = v.BindEnv("api.url", "GROKIPEDIA_API_URL")
 	_ = v.BindEnv("api.timeout", "GROKIPEDIA_TIMEOUT")
 	_ = v.BindEnv("cache.enabled", "GROKIPEDIA_NO_CACHE")
-	v.BindEnv("cache.ttl", "GROKIPEDIA_CACHE_TTL")
-	v.BindEnv("cache.dir", "GROKIPEDIA_CACHE_DIR")
-	v.BindEnv("output.color", "GROKIPEDIA_COLOR")
+	_ = v.BindEnv("cache.ttl", "GROKIPEDIA_CACHE_TTL")
+	_ = v.BindEnv("cache.dir", "GROKIPEDIA_CACHE_DIR")
+	_ = v.BindEnv("output.color", "GROKIPEDIA_COLOR")
 }
 
 // applyFlags applies CLI flag values to viper
