@@ -26,7 +26,6 @@ Thumbs.db
 
 # Go
 vendor/
-go.sum
 
 # Config (keep example)
 config.yml
