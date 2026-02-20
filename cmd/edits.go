@@ -77,7 +77,7 @@ var editsCmd = &cobra.Command{
 		// Cache the response
 		if c := getCache(); c != nil && cacheKey != "" {
 			if data, err := json.Marshal(results); err == nil {
-				c.Set(cacheKey, data)
+				_ = c.Set(cacheKey, data)
 			}
 		}
 

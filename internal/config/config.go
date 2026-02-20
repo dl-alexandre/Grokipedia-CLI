@@ -137,9 +137,9 @@ func bindEnvVars(v *viper.Viper) {
 	v.AutomaticEnv()
 
 	// Explicit bindings for nested keys
-	v.BindEnv("api.url", "GROKIPEDIA_API_URL")
-	v.BindEnv("api.timeout", "GROKIPEDIA_TIMEOUT")
-	v.BindEnv("cache.enabled", "GROKIPEDIA_NO_CACHE")
+	_ = v.BindEnv("api.url", "GROKIPEDIA_API_URL")
+	_ = v.BindEnv("api.timeout", "GROKIPEDIA_TIMEOUT")
+	_ = v.BindEnv("cache.enabled", "GROKIPEDIA_NO_CACHE")
 	v.BindEnv("cache.ttl", "GROKIPEDIA_CACHE_TTL")
 	v.BindEnv("cache.dir", "GROKIPEDIA_CACHE_DIR")
 	v.BindEnv("output.color", "GROKIPEDIA_COLOR")

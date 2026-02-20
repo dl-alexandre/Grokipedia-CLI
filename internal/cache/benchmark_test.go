@@ -79,7 +79,7 @@ func BenchmarkCacheSetGet(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		key := fmt.Sprintf("key-%d", i)
-		c.Set(key, data)
+		_ = c.Set(key, data)
 		c.Get(key)
 	}
 }
