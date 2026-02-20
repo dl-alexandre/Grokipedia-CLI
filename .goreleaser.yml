@@ -1,0 +1,116 @@
+version: 2
+
+project_name: grokipedia
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: grokipedia
+    main: ./main.go
+    binary: grokipedia
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: "^.*feat[(\\w)]*:*.*$"
+      order: 0
+    - title: Bug Fixes
+      regexp: "^.*fix[(\\w)]*:*.*$"
+      order: 1
+    - title: Security
+      regexp: "^.*sec[(\\w)]*:*.*$"
+      order: 2
+    - title: Other
+      order: 999
+
+release:
+  github:
+    owner: dl-alexandre
+    name: Grokipedia-CLI
+  draft: false
+  prerelease: auto
+  name_template: "v{{.Version}}"
+  header: |
+    ## What's Changed
+
+  footer: |
+    ## Installation
+
+    ### Homebrew
+    ```bash
+    brew tap dl-alexandre/tap
+    brew install grokipedia
+    ```
+
+    ### Go Install
+    ```bash
+    go install github.com/grokipedia/cli@v{{.Version}}
+    ```
+
+    ### Download Binary
+    Download the appropriate binary for your platform from the assets below.
+
+    ---
+    **Full Changelog**: https://github.com/dl-alexandre/Grokipedia-CLI/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+brews:
+  - name: grokipedia
+    repository:
+      owner: dl-alexandre
+      name: tap
+    directory: Formula
+    homepage: "https://github.com/dl-alexandre/Grokipedia-CLI"
+    description: "Grokipedia CLI - command-line interface for the Grokipedia API"
+    license: "MIT"
+    test: |
+      system "#{bin}/grokipedia", "--help"
+    install: |
+      bin.install "grokipedia"
