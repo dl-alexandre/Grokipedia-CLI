@@ -3,33 +3,58 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
-  packages: write
 
 jobs:
-  release:
-    name: GoReleaser
+  build-release:
     runs-on: ubuntu-latest
-
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [linux, darwin, windows]
+        arch: [amd64, arm64]
+        exclude:
+          - os: windows
+            arch: arm64
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
-          cache: true
+          go-version-file: go.mod
+          check-latest: true
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: latest
-          args: release --clean
+      - name: Build
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p dist
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            go build -trimpath -ldflags="-s -w" -o "dist/grokipedia.exe" ./main.go
+          else
+            go build -trimpath -ldflags="-s -w" -o "dist/grokipedia" ./main.go
+          fi
+
+      - name: Package
+        run: |
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            zip -j "dist/grokipedia-${{ matrix.os }}-${{ matrix.arch }}.zip" "dist/grokipedia.exe"
+          else
+            tar -czf "dist/grokipedia-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" -C dist grokipedia
+          fi
+
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum grokipedia-* > checksums.txt
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
