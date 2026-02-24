@@ -238,7 +238,7 @@ func captureOutput(t *testing.T, f func()) string {
 
 	f()
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -160,7 +161,8 @@ func TestClientPageNotFound(t *testing.T) {
 		t.Fatal("Expected error for 404 response")
 	}
 
-	if _, ok := err.(*NotFoundError); !ok {
+	var notFoundErr *NotFoundError
+	if !errors.As(err, &notFoundErr) {
 		t.Errorf("Expected NotFoundError, got %T", err)
 	}
 }
@@ -329,7 +331,8 @@ func TestClientRateLimit(t *testing.T) {
 		t.Fatal("Expected error for 429 response")
 	}
 
-	if _, ok := err.(*RateLimitError); !ok {
+	var rateLimitErr *RateLimitError
+	if !errors.As(err, &rateLimitErr) {
 		t.Errorf("Expected RateLimitError, got %T", err)
 	}
 }

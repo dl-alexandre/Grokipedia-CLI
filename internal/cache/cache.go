@@ -72,15 +72,15 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 	metaData, err := os.ReadFile(metaPath)
 	if err != nil {
 		// Metadata missing, treat as expired
-		os.Remove(dataPath)
+		_ = os.Remove(dataPath)
 		return nil, false
 	}
 
 	var meta CacheMetadata
 	if err := json.Unmarshal(metaData, &meta); err != nil {
 		// Corrupt metadata, delete files
-		os.Remove(dataPath)
-		os.Remove(metaPath)
+		_ = os.Remove(dataPath)
+		_ = os.Remove(metaPath)
 		return nil, false
 	}
 
@@ -89,8 +89,8 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 		age := time.Now().Unix() - meta.CreatedAt
 		if age > int64(meta.TTL) {
 			// Expired, delete files
-			os.Remove(dataPath)
-			os.Remove(metaPath)
+			_ = os.Remove(dataPath)
+			_ = os.Remove(metaPath)
 			return nil, false
 		}
 	}
@@ -122,13 +122,13 @@ func (c *Cache) Set(key string, data []byte) error {
 	metaData, err := json.Marshal(meta)
 	if err != nil {
 		// Clean up data file on error
-		os.Remove(dataPath)
+		_ = os.Remove(dataPath)
 		return fmt.Errorf("failed to marshal cache metadata: %w", err)
 	}
 
 	if err := os.WriteFile(metaPath, metaData, 0600); err != nil {
 		// Clean up data file on error
-		os.Remove(dataPath)
+		_ = os.Remove(dataPath)
 		return fmt.Errorf("failed to write cache metadata: %w", err)
 	}
 
@@ -140,8 +140,8 @@ func (c *Cache) Delete(key string) error {
 	dataPath := filepath.Join(c.dir, key+".json")
 	metaPath := filepath.Join(c.dir, key+".meta")
 
-	os.Remove(dataPath)
-	os.Remove(metaPath)
+	_ = os.Remove(dataPath)
+	_ = os.Remove(metaPath)
 
 	return nil
 }
@@ -159,7 +159,7 @@ func (c *Cache) Clear() error {
 	for _, entry := range entries {
 		name := entry.Name()
 		if filepath.Ext(name) == ".json" || filepath.Ext(name) == ".meta" {
-			os.Remove(filepath.Join(c.dir, name))
+			_ = os.Remove(filepath.Join(c.dir, name))
 		}
 	}
 

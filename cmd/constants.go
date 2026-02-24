@@ -87,7 +87,7 @@ func outputConstantsResults(results api.ConstantsResponse, key string, format st
 
 	case "yaml":
 		enc := yaml.NewEncoder(os.Stdout)
-		defer enc.Close()
+		defer func() { _ = enc.Close() }()
 		return enc.Encode(results)
 
 	case "table":

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -129,7 +130,8 @@ func TestConstantsFilterUnknownKey(t *testing.T) {
 		t.Error("Expected error for unknown constant key")
 	}
 
-	if _, ok := err.(*api.UnknownConstantError); !ok {
+	var unknownErr *api.UnknownConstantError
+	if !errors.As(err, &unknownErr) {
 		t.Errorf("Expected UnknownConstantError, got %T", err)
 	}
 }

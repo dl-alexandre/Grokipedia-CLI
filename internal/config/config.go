@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -88,7 +89,8 @@ func Load(flags GlobalFlags) (*Config, error) {
 
 	// Read config file (ignore error if not found)
 	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+		var notFoundErr viper.ConfigFileNotFoundError
+		if !errors.As(err, &notFoundErr) {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
 	}

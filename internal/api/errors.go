@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -97,10 +98,9 @@ func GetExitCode(err error) int {
 		return ExitSuccess
 	}
 
-	switch e := err.(type) {
-	case interface{ ExitCode() int }:
-		return e.ExitCode()
-	default:
-		return ExitGenericError
+	var exitCoder interface{ ExitCode() int }
+	if errors.As(err, &exitCoder) {
+		return exitCoder.ExitCode()
 	}
+	return ExitGenericError
 }
