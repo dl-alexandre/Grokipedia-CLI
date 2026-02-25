@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build-release:
+  build:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -45,9 +45,29 @@ jobs:
         run: |
           if [ "${{ matrix.os }}" = "windows" ]; then
             zip -j "dist/grokipedia-${{ matrix.os }}-${{ matrix.arch }}.zip" "dist/grokipedia.exe"
+            rm dist/grokipedia.exe
           else
             tar -czf "dist/grokipedia-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" -C dist grokipedia
+            rm dist/grokipedia
           fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: grokipedia-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/*
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: grokipedia-*
+          merge-multiple: true
 
       - name: Checksums
         run: |
