@@ -1,5 +1,7 @@
 # Grokipedia CLI
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/grokipedia/cli)](https://goreportcard.com/report/github.com/grokipedia/cli)
+
 A command-line interface for the Grokipedia API.
 
 ## Installation
