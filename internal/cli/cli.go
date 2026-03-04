@@ -21,12 +21,13 @@ import (
 type CLI struct {
 	Globals
 
-	Search     SearchCmd     `cmd:"" help:"Search for pages in Grokipedia"`
-	Page       PageCmd       `cmd:"" help:"Retrieve a page by slug"`
-	Edits      EditsCmd      `cmd:"" help:"List edit requests"`
-	Typeahead  TypeaheadCmd  `cmd:"" help:"Typeahead search for page titles"`
-	Constants  ConstantsCmd  `cmd:"" help:"List API constants and enums"`
-	Completion CompletionCmd `cmd:"" help:"Generate shell completion script"`
+	Search       SearchCmd      `cmd:"" help:"Search for pages in Grokipedia"`
+	Page         PageCmd        `cmd:"" help:"Retrieve a page by slug"`
+	Edits        EditsCmd       `cmd:"" help:"List edit requests"`
+	Typeahead    TypeaheadCmd   `cmd:"" help:"Typeahead search for page titles"`
+	Constants    ConstantsCmd   `cmd:"" help:"List API constants and enums"`
+	Completion   CompletionCmd  `cmd:"" help:"Generate shell completion script"`
+	CheckUpdates UpdateCheckCmd `cmd:"" name:"check-updates" help:"Check for available updates"`
 }
 
 // Globals contains global flags available to all commands
