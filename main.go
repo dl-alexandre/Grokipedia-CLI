@@ -38,7 +38,7 @@ func main() {
 	// Run auto update check in background (non-blocking)
 	// Initialize cache for update checking if not disabled
 	var updateCache *cache.Cache
-	if !c.Globals.NoCache {
+	if !c.NoCache {
 		updateCache = cache.New("", 24*60*60) // Default cache dir, 24 hour TTL
 	}
 	cli.AutoUpdateCheck(updateCache)

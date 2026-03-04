@@ -98,7 +98,9 @@ func (c *UpdateCheckCmd) fetchLatestRelease(currentVersion string) (UpdateInfo, 
 	if err != nil {
 		return UpdateInfo{}, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() // #nosec G104 - best effort cleanup
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -205,7 +207,7 @@ func compareVersions(v1, v2 string) int {
 			if idx := strings.IndexAny(part, "-"); idx != -1 {
 				part = part[:idx]
 			}
-			fmt.Sscanf(part, "%d", &num1)
+			_, _ = fmt.Sscanf(part, "%d", &num1) // #nosec G104 - best effort parsing
 		}
 
 		if i < len(parts2) {
@@ -213,7 +215,7 @@ func compareVersions(v1, v2 string) int {
 			if idx := strings.IndexAny(part, "-"); idx != -1 {
 				part = part[:idx]
 			}
-			fmt.Sscanf(part, "%d", &num2)
+			_, _ = fmt.Sscanf(part, "%d", &num2) // #nosec G104 - best effort parsing
 		}
 
 		if num1 < num2 {

@@ -63,13 +63,13 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 	metaPath := filepath.Join(c.dir, key+".meta")
 
 	// Check if data file exists
-	data, err := os.ReadFile(dataPath)
+	data, err := os.ReadFile(dataPath) // #nosec G304 - path is constructed from trusted cache directory
 	if err != nil {
 		return nil, false
 	}
 
 	// Read and validate metadata
-	metaData, err := os.ReadFile(metaPath)
+	metaData, err := os.ReadFile(metaPath) // #nosec G304 - path is constructed from trusted cache directory
 	if err != nil {
 		// Metadata missing, treat as expired
 		_ = os.Remove(dataPath)

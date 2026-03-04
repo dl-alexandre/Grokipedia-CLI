@@ -1,9 +1,10 @@
 package api
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -142,7 +143,9 @@ func (c *Client) calculateBackoff(attempt int) time.Duration {
 	}
 
 	baseDelay := time.Duration(1<<(attempt-1)) * time.Second
-	jitter := time.Duration(rand.Intn(1000)) * time.Millisecond
+	// Use crypto/rand for secure random jitter
+	jitterInt, _ := rand.Int(rand.Reader, big.NewInt(1000))
+	jitter := time.Duration(jitterInt.Int64()) * time.Millisecond
 	return baseDelay + jitter
 }
 
