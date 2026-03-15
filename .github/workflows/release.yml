@@ -3,78 +3,34 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [linux, darwin, windows]
-        arch: [amd64, arm64]
-        exclude:
-          - os: windows
-            arch: arm64
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - name: Build
-        env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
-        run: |
-          mkdir -p dist
-          if [ "${{ matrix.os }}" = "windows" ]; then
-            go build -trimpath -ldflags="-s -w" -o "dist/grokipedia.exe" ./main.go
-          else
-            go build -trimpath -ldflags="-s -w" -o "dist/grokipedia" ./main.go
-          fi
-
-      - name: Package
-        run: |
-          if [ "${{ matrix.os }}" = "windows" ]; then
-            zip -j "dist/grokipedia-${{ matrix.os }}-${{ matrix.arch }}.zip" "dist/grokipedia.exe"
-            rm dist/grokipedia.exe
-          else
-            tar -czf "dist/grokipedia-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" -C dist grokipedia
-            rm dist/grokipedia
-          fi
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: grokipedia-${{ matrix.os }}-${{ matrix.arch }}
-          path: dist/*
-          retention-days: 1
-
   release:
-    needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v6
         with:
-          path: dist
-          pattern: grokipedia-*
-          merge-multiple: true
+          fetch-depth: 0
 
-      - name: Checksums
-        run: |
-          cd dist
-          sha256sum grokipedia-* > checksums.txt
-
-      - name: Release
-        uses: softprops/action-gh-release@v2
+      - name: Set up Go
+        uses: actions/setup-go@v6
         with:
-          files: dist/*
+          go-version-file: 'go.mod'
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          SCOOP_BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
