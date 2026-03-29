@@ -421,3 +421,119 @@ func TestShouldRetry(t *testing.T) {
 		})
 	}
 }
+
+func TestClientSuggestArticle(t *testing.T) {
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify request
+		if r.URL.Path != "/api/create-article-request" {
+			t.Errorf("Expected path /api/create-article-request, got %s", r.URL.Path)
+		}
+
+		if r.Method != http.MethodPost {
+			t.Errorf("Expected POST method, got %s", r.Method)
+		}
+
+		// Verify content type
+		contentType := r.Header.Get("Content-Type")
+		if contentType != "application/json" {
+			t.Errorf("Expected Content-Type 'application/json', got %s", contentType)
+		}
+
+		// Parse request body
+		var req SuggestArticleRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("Failed to decode request body: %v", err)
+		}
+
+		if req.Title != "Test Article" {
+			t.Errorf("Expected title 'Test Article', got %s", req.Title)
+		}
+
+		if req.Content != "Test content" {
+			t.Errorf("Expected content 'Test content', got %s", req.Content)
+		}
+
+		if req.Sources != "https://example.com" {
+			t.Errorf("Expected sources 'https://example.com', got %s", req.Sources)
+		}
+
+		// Return mock response
+		response := SuggestArticleResponse{
+			Success: true,
+			ID:      "req-789",
+			Status:  "PENDING",
+			Message: "Request submitted successfully",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{
+		BaseURL: server.URL,
+		Timeout: 30,
+	})
+
+	req := &SuggestArticleRequest{
+		Title:   "Test Article",
+		Content: "Test content",
+		Sources: "https://example.com",
+	}
+
+	result, err := client.SuggestArticle(req)
+	if err != nil {
+		t.Fatalf("SuggestArticle() error = %v", err)
+	}
+
+	if !result.Success {
+		t.Error("Expected success to be true")
+	}
+
+	if result.ID != "req-789" {
+		t.Errorf("Expected ID 'req-789', got %s", result.ID)
+	}
+
+	if result.Status != "PENDING" {
+		t.Errorf("Expected status 'PENDING', got %s", result.Status)
+	}
+}
+
+func TestClientSuggestArticleFailure(t *testing.T) {
+	// Create test server that returns error
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := SuggestArticleResponse{
+			Success: false,
+			Message: "Article already exists",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{
+		BaseURL: server.URL,
+		Timeout: 30,
+	})
+
+	req := &SuggestArticleRequest{
+		Title: "Existing Article",
+	}
+
+	result, err := client.SuggestArticle(req)
+	if err != nil {
+		t.Fatalf("SuggestArticle() error = %v", err)
+	}
+
+	if result.Success {
+		t.Error("Expected success to be false")
+	}
+
+	if result.Message != "Article already exists" {
+		t.Errorf("Expected message 'Article already exists', got %s", result.Message)
+	}
+}

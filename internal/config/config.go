@@ -39,8 +39,14 @@ type OutputConfig struct {
 
 // CommandsConfig holds command-specific defaults
 type CommandsConfig struct {
-	Search SearchConfig `mapstructure:"search"`
-	Edits  EditsConfig  `mapstructure:"edits"`
+	Search  SearchConfig  `mapstructure:"search"`
+	Edits   EditsConfig   `mapstructure:"edits"`
+	Suggest SuggestConfig `mapstructure:"suggest"`
+}
+
+// SuggestConfig holds suggest command defaults
+type SuggestConfig struct {
+	Format string `mapstructure:"format"`
 }
 
 // SearchConfig holds search command defaults
@@ -130,6 +136,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("commands.search.format", "table")
 
 	v.SetDefault("commands.edits.limit", 20)
+
+	v.SetDefault("commands.suggest.format", "text")
 }
 
 // bindEnvVars binds environment variables to config keys

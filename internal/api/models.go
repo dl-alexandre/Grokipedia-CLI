@@ -98,3 +98,18 @@ type EditRequest struct {
 // EditsBySlugResponse represents the response from /api/list-edit-requests-by-slug
 // Same structure as EditsResponse
 type EditsBySlugResponse EditsResponse
+
+// SuggestArticleRequest represents the request to suggest a new article
+type SuggestArticleRequest struct {
+	Title   string `json:"title"`
+	Content string `json:"content,omitempty"`
+	Sources string `json:"sources,omitempty"`
+}
+
+// SuggestArticleResponse represents the response from /api/create-article-request
+type SuggestArticleResponse struct {
+	Success bool   `json:"success"`
+	ID      string `json:"id,omitempty"`
+	Status  string `json:"status,omitempty"`
+	Message string `json:"message,omitempty"`
+}

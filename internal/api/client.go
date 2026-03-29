@@ -65,11 +65,22 @@ func NewClient(opts ClientOptions) *Client {
 
 // doRequest performs an HTTP request with retry logic
 func (c *Client) doRequest(req *resty.Request, endpoint string) (*resty.Response, error) {
+	return c.doRequestWithMethod(req, endpoint, "")
+}
+
+// doRequestWithMethod performs an HTTP request with retry logic and explicit method handling
+func (c *Client) doRequestWithMethod(req *resty.Request, endpoint string, method string) (*resty.Response, error) {
 	maxRetries := 3
 	var lastErr error
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		resp, err := req.Execute(req.Method, endpoint)
+		var resp *resty.Response
+		var err error
+		if method != "" {
+			resp, err = req.Execute(method, endpoint)
+		} else {
+			resp, err = req.Execute(req.Method, endpoint)
+		}
 
 		if err != nil {
 			lastErr = &NetworkError{Message: err.Error()}
@@ -282,6 +293,30 @@ func (c *Client) EditsBySlug(slug string, limit, offset int) (*EditsBySlugRespon
 	var result EditsBySlugResponse
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse edits-by-slug response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// SuggestArticle submits a request to suggest a new article
+func (c *Client) SuggestArticle(req *SuggestArticleRequest) (*SuggestArticleResponse, error) {
+	payload, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal suggest request: %w", err)
+	}
+
+	httpReq := c.httpClient.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(payload)
+
+	resp, err := c.doRequestWithMethod(httpReq, "/api/create-article-request", resty.MethodPost)
+	if err != nil {
+		return nil, err
+	}
+
+	var result SuggestArticleResponse
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse suggest article response: %w", err)
 	}
 
 	return &result, nil
