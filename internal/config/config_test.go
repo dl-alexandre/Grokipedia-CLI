@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestLoadDefaults(t *testing.T) {
@@ -24,8 +25,8 @@ func TestLoadDefaults(t *testing.T) {
 	if !cfg.Cache.Enabled {
 		t.Error("Expected cache enabled by default")
 	}
-	if cfg.Cache.TTL != 604800 {
-		t.Errorf("Expected default TTL 604800, got %d", cfg.Cache.TTL)
+	if cfg.Cache.TTL != 604800*time.Second {
+		t.Errorf("Expected default TTL 604800s, got %v", cfg.Cache.TTL)
 	}
 	if cfg.Output.Format != "table" {
 		t.Errorf("Expected default format 'table', got %q", cfg.Output.Format)
@@ -59,8 +60,8 @@ func TestLoadWithFlags(t *testing.T) {
 	if cfg.Cache.Enabled {
 		t.Error("Expected cache disabled from --no-cache flag")
 	}
-	if cfg.Cache.TTL != 3600 {
-		t.Errorf("Expected TTL 3600 from flag, got %d", cfg.Cache.TTL)
+	if cfg.Cache.TTL != 3600*time.Second {
+		t.Errorf("Expected TTL 3600s from flag, got %v", cfg.Cache.TTL)
 	}
 	if cfg.Output.Color != "never" {
 		t.Errorf("Expected color 'never' from flag, got %q", cfg.Output.Color)
@@ -221,7 +222,7 @@ func TestIsCacheEnabled(t *testing.T) {
 	tests := []struct {
 		name     string
 		enabled  bool
-		ttl      int
+		ttl      time.Duration
 		expected bool
 	}{
 		{
@@ -268,23 +269,23 @@ func TestIsCacheEnabled(t *testing.T) {
 func TestGetCacheTTL(t *testing.T) {
 	tests := []struct {
 		name     string
-		ttl      int
-		expected int
+		ttl      time.Duration
+		expected time.Duration
 	}{
 		{
 			name:     "positive TTL",
-			ttl:      3600,
-			expected: 3600,
+			ttl:      3600 * time.Second,
+			expected: 3600 * time.Second,
 		},
 		{
 			name:     "zero TTL",
 			ttl:      0,
-			expected: 0,
+			expected: 7 * 24 * time.Hour, // default 7 days
 		},
 		{
 			name:     "negative TTL returns default",
-			ttl:      -1,
-			expected: 604800, // default 7 days
+			ttl:      -1 * time.Second,
+			expected: 7 * 24 * time.Hour, // default 7 days
 		},
 	}
 
@@ -296,7 +297,7 @@ func TestGetCacheTTL(t *testing.T) {
 				},
 			}
 			if got := cfg.GetCacheTTL(); got != tt.expected {
-				t.Errorf("GetCacheTTL() = %d, want %d", got, tt.expected)
+				t.Errorf("GetCacheTTL() = %v, want %v", got, tt.expected)
 			}
 		})
 	}

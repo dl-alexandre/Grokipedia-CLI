@@ -126,7 +126,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("api.timeout", 30)
 
 	v.SetDefault("cache.enabled", true)
-	v.SetDefault("cache.ttl", 604800) // 7 days
+	v.SetDefault("cache.ttl", 604800*time.Second) // 7 days
 	v.SetDefault("cache.dir", "~/.grokipedia/cache")
 
 	v.SetDefault("output.format", "table")
@@ -171,7 +171,7 @@ func applyFlags(v *viper.Viper, flags GlobalFlags) {
 		v.Set("cache.dir", flags.CacheDir)
 	}
 	if flags.CacheTTL != 0 {
-		v.Set("cache.ttl", flags.CacheTTL)
+		v.Set("cache.ttl", time.Duration(flags.CacheTTL)*time.Second)
 	}
 	if flags.Color != "" {
 		v.Set("output.color", flags.Color)

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
-	"github.com/dl-alexandre/cli-tools/cache"
 	"github.com/grokipedia/cli/internal/api"
+	"github.com/grokipedia/cli/internal/cache"
 	"github.com/grokipedia/cli/internal/config"
 	"github.com/grokipedia/cli/internal/formatter"
 	"github.com/mattn/go-isatty"
@@ -74,7 +74,7 @@ func (g *Globals) AfterApply() error {
 	if !g.NoCache && cfg.IsCacheEnabled() {
 		g.appCache = cache.New(
 			cfg.GetCacheDir(),
-			cfg.GetCacheTTL(),
+			int(cfg.GetCacheTTL()),
 		)
 	}
 
