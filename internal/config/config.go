@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -26,9 +27,9 @@ type APIConfig struct {
 
 // CacheConfig holds cache-related configuration
 type CacheConfig struct {
-	Enabled bool   `mapstructure:"enabled"`
-	TTL     int    `mapstructure:"ttl"`
-	Dir     string `mapstructure:"dir"`
+	Enabled bool          `mapstructure:"enabled"`
+	TTL     time.Duration `mapstructure:"ttl"`
+	Dir     string        `mapstructure:"dir"`
 }
 
 // OutputConfig holds output-related configuration
@@ -219,10 +220,10 @@ func (c *Config) IsCacheEnabled() bool {
 	return c.Cache.Enabled && c.Cache.TTL > 0
 }
 
-// GetCacheTTL returns the cache TTL in seconds
-func (c *Config) GetCacheTTL() int {
-	if c.Cache.TTL < 0 {
-		return 604800 // default 7 days
+// GetCacheTTL returns the cache TTL as time.Duration
+func (c *Config) GetCacheTTL() time.Duration {
+	if c.Cache.TTL <= 0 {
+		return 7 * 24 * time.Hour // default 7 days
 	}
 	return c.Cache.TTL
 }

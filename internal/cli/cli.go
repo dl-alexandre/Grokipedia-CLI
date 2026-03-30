@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
+	"github.com/dl-alexandre/cli-tools/cache"
 	"github.com/grokipedia/cli/internal/api"
-	"github.com/grokipedia/cli/internal/cache"
 	"github.com/grokipedia/cli/internal/config"
 	"github.com/grokipedia/cli/internal/formatter"
 	"github.com/mattn/go-isatty"

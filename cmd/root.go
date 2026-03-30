@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dl-alexandre/cli-tools/cache"
 	"github.com/grokipedia/cli/internal/api"
-	"github.com/grokipedia/cli/internal/cache"
 	"github.com/grokipedia/cli/internal/config"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
@@ -23,7 +23,7 @@ var (
 	colorMode string
 
 	appConfig *config.Config
-	appCache  *cache.Cache
+	appCache  cache.Cache
 	appClient *api.Client
 )
 

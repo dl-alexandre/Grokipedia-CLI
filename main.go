@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
+	"github.com/dl-alexandre/cli-tools/cache"
 	cliver "github.com/dl-alexandre/cli-tools/version"
-	"github.com/grokipedia/cli/internal/cache"
 	"github.com/grokipedia/cli/internal/cli"
 )
 
@@ -46,7 +46,7 @@ func main() {
 		time.Sleep(100 * time.Millisecond)
 
 		// Use a minimal cache for update checks
-		updateCache := cache.New(cache.DefaultCacheDir(), 24*60*60) // 24 hours in seconds
+		updateCache := cache.New(cache.DefaultDir("grokipedia"), 24*time.Hour)
 		cli.AutoUpdateCheck(updateCache)
 	}()
 
