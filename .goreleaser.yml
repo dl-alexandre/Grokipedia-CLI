@@ -42,7 +42,7 @@ archives:
 
 checksum:
   name_template: 'checksums.txt'
-  algorithm: sha256
+  algorithm: blake3
 
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
@@ -112,7 +112,7 @@ brews:
         enabled: false
     commit_author:
       name: goreleaserbot
-      email: goreleaser@carlosbecker.com
+      email: bot@dl-alexandre.com
     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
     directory: Formula
     homepage: "https://github.com/dl-alexandre/Grokipedia-CLI"
@@ -124,7 +124,21 @@ brews:
     install: |
       bin.install "grokipedia"
 
-# Scoop configuration for Windows
+flatpak:
+  - app_id: net.ddns.dl-alexandre.GrokipediaCLI
+    runtime: org.freedesktop.Platform
+    runtime_version: "24.08"
+    sdk: org.freedesktop.Sdk
+    finish_args:
+      - --share=network
+      - --filesystem=home
+
+srpm:
+  enabled: true
+  summary: "Grokipedia CLI - command-line interface for the Grokipedia API"
+  license: MIT
+  url: https://github.com/dl-alexandre/Grokipedia-CLI
+
 scoops:
   - repository:
       owner: dl-alexandre
@@ -135,7 +149,7 @@ scoops:
         enabled: false
     commit_author:
       name: goreleaserbot
-      email: goreleaser@carlosbecker.com
+      email: bot@dl-alexandre.com
     commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
     directory: bucket
     description: "CLI for Wikipedia/Grok integration"
