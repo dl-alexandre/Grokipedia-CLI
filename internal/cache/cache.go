@@ -170,3 +170,12 @@ func (c *Cache) Clear() error {
 func (c *Cache) IsEnabled() bool {
 	return c.ttl > 0
 }
+
+// DefaultCacheDir returns the default cache directory
+func DefaultCacheDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ".cache/grokipedia"
+	}
+	return filepath.Join(home, ".cache", "grokipedia")
+}

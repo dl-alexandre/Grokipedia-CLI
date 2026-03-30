@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/alecthomas/kong"
+	cliver "github.com/dl-alexandre/cli-tools/version"
 	"github.com/grokipedia/cli/internal/cache"
 	"github.com/grokipedia/cli/internal/cli"
 )
@@ -15,33 +18,40 @@ var (
 )
 
 func main() {
-	// Set version info for update checking
-	cli.Version = version
-	cli.GitCommit = gitCommit
-	cli.BuildTime = buildTime
-	cli.BinaryName = "grokipedia"
-	cli.GitHubRepo = "grokipedia-cli"
+	// Set version info in cli-tools
+	cliver.Version = version
+	cliver.GitCommit = gitCommit
+	cliver.BuildTime = buildTime
+	cliver.BinaryName = "grokipedia"
 
 	var c cli.CLI
 	ctx := kong.Parse(&c,
 		kong.Name("grokipedia"),
 		kong.Description("A CLI for the Grokipedia API"),
 		kong.UsageOnError(),
+		kong.Vars{
+			"version": version,
+		},
 	)
 
-	// If version flag was passed, print version and exit
-	if ctx.Command() == "version" || (len(ctx.Args) > 0 && ctx.Args[0] == "--version") {
-		fmt.Printf("grokipedia %s (%s) built %s\n", version, gitCommit, buildTime)
-		return
+	if ctx.Command() == "version" {
+		fmt.Printf("grokipedia %s (commit: %s) built %s\n", cliver.Version, cliver.GitCommit, cliver.BuildTime)
+		os.Exit(0)
 	}
 
-	// Run auto update check in background (non-blocking)
-	// Initialize cache for update checking if not disabled
-	var updateCache *cache.Cache
-	if !c.NoCache {
-		updateCache = cache.New("", 24*60*60) // Default cache dir, 24 hour TTL
-	}
-	cli.AutoUpdateCheck(updateCache)
+	// Run auto-update check in background (after initialization)
+	// This runs asynchronously and won't block the main command
+	go func() {
+		// Small delay to not interfere with command output
+		time.Sleep(100 * time.Millisecond)
 
-	ctx.FatalIfErrorf(ctx.Run(&c.Globals))
+		// Use a minimal cache for update checks
+		updateCache := cache.New(cache.DefaultCacheDir(), 24*60*60) // 24 hours in seconds
+		cli.AutoUpdateCheck(updateCache)
+	}()
+
+	if err := ctx.Run(&c.Globals); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }
