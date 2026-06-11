@@ -27,7 +27,7 @@ func main() {
 	var c cli.CLI
 	ctx := kong.Parse(&c,
 		kong.Name("grokipedia"),
-		kong.Description("A CLI for the Grokipedia API"),
+		kong.Description("Unofficial CLI for the Grokipedia API"),
 		kong.UsageOnError(),
 		kong.Vars{
 			"version": version,

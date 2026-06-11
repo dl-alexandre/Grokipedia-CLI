@@ -321,3 +321,103 @@ func (c *Client) SuggestArticle(req *SuggestArticleRequest) (*SuggestArticleResp
 
 	return &result, nil
 }
+
+// ListPages retrieves a paginated list of pages (supports optional category filter)
+func (c *Client) ListPages(limit, offset int, category string) (*ListPagesResponse, error) {
+	req := c.httpClient.R().
+		SetQueryParam("limit", strconv.Itoa(limit)).
+		SetQueryParam("offset", strconv.Itoa(offset))
+
+	if category != "" {
+		req.SetQueryParam("category", category)
+	}
+
+	resp, err := c.doRequest(req, "/api/list-pages")
+	if err != nil {
+		return nil, err
+	}
+
+	var result ListPagesResponse
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse list-pages response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// Stats retrieves global Grokipedia statistics
+func (c *Client) Stats() (*StatsResponse, error) {
+	req := c.httpClient.R()
+
+	resp, err := c.doRequest(req, "/api/stats")
+	if err != nil {
+		return nil, err
+	}
+
+	var result StatsResponse
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse stats response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// PagePreview retrieves a lightweight page preview by slug
+func (c *Client) PagePreview(slug string) (*PagePreviewResponse, error) {
+	req := c.httpClient.R().
+		SetQueryParam("slug", slug)
+
+	resp, err := c.doRequest(req, "/api/page-preview")
+	if err != nil {
+		return nil, err
+	}
+
+	var result PagePreviewResponse
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse page-preview response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// TTS retrieves text-to-speech section information for a page
+func (c *Client) TTS(slug string) (*TTSResponse, error) {
+	req := c.httpClient.R().
+		SetQueryParam("slug", slug)
+
+	resp, err := c.doRequest(req, "/api/tts")
+	if err != nil {
+		return nil, err
+	}
+
+	var result TTSResponse
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse tts response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// CreateEditRequest submits a proposed edit for an existing article
+func (c *Client) CreateEditRequest(req *CreateEditRequest) (*CreateEditResponse, error) {
+	payload, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal edit request: %w", err)
+	}
+
+	httpReq := c.httpClient.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(payload)
+
+	resp, err := c.doRequestWithMethod(httpReq, "/api/create-edit-request", resty.MethodPost)
+	if err != nil {
+		return nil, err
+	}
+
+	var result CreateEditResponse
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse create-edit response: %w", err)
+	}
+
+	return &result, nil
+}

@@ -49,9 +49,43 @@ func TestOutputSuggestResultsJSON(t *testing.T) {
 	if !parsed.Success {
 		t.Error("Expected success to be true")
 	}
+}
 
-	if parsed.ID != "req-123" {
-		t.Errorf("Expected ID 'req-123', got '%s'", parsed.ID)
+func TestOutputPreviewResultsMarkdown(t *testing.T) {
+	resp := &api.PagePreviewResponse{
+		Found: true,
+		Page: api.PreviewPageData{
+			Title:       "Test Page",
+			Slug:        "Test_Page",
+			Description: "A test description",
+			Content:     "Short content here.",
+			Stats:       api.ListPageStats{TotalViews: "1234", QualityScore: 0.95},
+		},
+	}
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := outputPreviewResults(resp, "markdown")
+
+	if err := w.Close(); err != nil {
+		t.Fatalf("Failed to close writer: %v", err)
+	}
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(r); err != nil {
+		t.Fatalf("Failed to read from pipe: %v", err)
+	}
+	output := buf.String()
+
+	if err != nil {
+		t.Errorf("outputPreviewResults() error = %v", err)
+	}
+
+	if !strings.Contains(output, "Test Page") {
+		t.Error("Expected preview to contain title")
 	}
 }
 

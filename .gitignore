@@ -30,3 +30,6 @@ vendor/
 # Config (keep example)
 config.yml
 !config.example.yml
+
+# Compiled binary (repo root)
+/cli

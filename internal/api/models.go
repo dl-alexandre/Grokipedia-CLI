@@ -113,3 +113,88 @@ type SuggestArticleResponse struct {
 	Status  string `json:"status,omitempty"`
 	Message string `json:"message,omitempty"`
 }
+
+// ListPagesResponse represents the response from /api/list-pages
+type ListPagesResponse struct {
+	Pages      []ListPageItem `json:"pages"`
+	TotalCount int            `json:"totalCount"`
+	HasMore    bool           `json:"hasMore"`
+}
+
+// ListPageItem represents a single page in list-pages results
+type ListPageItem struct {
+	Slug        string        `json:"slug"`
+	Title       string        `json:"title"`
+	Description string        `json:"description"`
+	Metadata    PageMetadata  `json:"metadata"`
+	Stats       ListPageStats `json:"stats"`
+	Citations   []Citation    `json:"citations"`
+	Images      []Image       `json:"images"`
+}
+
+// ListPageStats is the stats shape returned by /api/list-pages (values are strings)
+type ListPageStats struct {
+	TotalViews    string  `json:"totalViews"`
+	RecentViews   string  `json:"recentViews"`
+	DailyAvgViews float64 `json:"dailyAvgViews"`
+	QualityScore  float64 `json:"qualityScore"`
+	LastViewed    string  `json:"lastViewed"`
+}
+
+// StatsResponse represents the response from /api/stats
+type StatsResponse struct {
+	TotalPages      string `json:"totalPages"`
+	TotalViews      string `json:"totalViews"`
+	AvgViewsPerPage int    `json:"avgViewsPerPage"`
+	IndexSizeBytes  string `json:"indexSizeBytes"`
+	StatsTimestamp  string `json:"statsTimestamp"` // API returns as string
+}
+
+// PagePreviewResponse represents the response from /api/page-preview
+type PagePreviewResponse struct {
+	Found bool            `json:"found"`
+	Page  PreviewPageData `json:"page"`
+}
+
+// PreviewPageData is a lighter page shape returned by /api/page-preview (stats values may be strings)
+type PreviewPageData struct {
+	Title       string        `json:"title"`
+	Slug        string        `json:"slug"`
+	Content     string        `json:"content"`
+	Description string        `json:"description"`
+	Citations   []Citation    `json:"citations"`
+	Images      []Image       `json:"images"`
+	Metadata    PageMetadata  `json:"metadata"`
+	Stats       ListPageStats `json:"stats"`
+	LinkedPages LinkedPages   `json:"linkedPages"`
+}
+
+// TTSResponse represents the response from /api/tts
+type TTSResponse struct {
+	Slug     string       `json:"slug"`
+	Sections []TTSSection `json:"sections"`
+}
+
+// TTSSection represents one speakable section of an article
+type TTSSection struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	PartCount int    `json:"partCount"`
+}
+
+// CreateEditRequest represents the payload for /api/create-edit-request
+type CreateEditRequest struct {
+	Slug         string `json:"slug"`
+	Summary      string `json:"summary"`
+	Content      string `json:"content,omitempty"`
+	Sources      string `json:"sources,omitempty"`
+	OriginalText string `json:"originalText,omitempty"`
+}
+
+// CreateEditResponse represents the response from /api/create-edit-request
+type CreateEditResponse struct {
+	Success bool   `json:"success"`
+	ID      string `json:"id,omitempty"`
+	Status  string `json:"status,omitempty"`
+	Message string `json:"message,omitempty"`
+}

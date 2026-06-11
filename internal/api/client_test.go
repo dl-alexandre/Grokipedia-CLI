@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -535,5 +536,231 @@ func TestClientSuggestArticleFailure(t *testing.T) {
 
 	if result.Message != "Article already exists" {
 		t.Errorf("Expected message 'Article already exists', got %s", result.Message)
+	}
+}
+
+// =============================================================================
+// Tests for new endpoints (list-pages, stats, page-preview, tts, create-edit-request)
+// =============================================================================
+
+func TestClientListPages(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/list-pages" {
+			t.Errorf("Expected path /api/list-pages, got %s", r.URL.Path)
+		}
+		if r.URL.Query().Get("limit") != "10" {
+			t.Errorf("Expected limit 10, got %s", r.URL.Query().Get("limit"))
+		}
+		if r.URL.Query().Get("offset") != "5" {
+			t.Errorf("Expected offset 5, got %s", r.URL.Query().Get("offset"))
+		}
+		if r.URL.Query().Get("category") != "Physics" {
+			t.Errorf("Expected category Physics, got %s", r.URL.Query().Get("category"))
+		}
+
+		response := ListPagesResponse{
+			Pages: []ListPageItem{
+				{
+					Slug:  "quantum_computing",
+					Title: "Quantum Computing",
+					Metadata: PageMetadata{
+						Categories: []string{"Physics", "Computing"},
+					},
+					Stats: ListPageStats{
+						TotalViews:   "12500",
+						QualityScore: 0.92,
+					},
+				},
+			},
+			TotalCount: 125000,
+			HasMore:    true,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{BaseURL: server.URL})
+
+	result, err := client.ListPages(10, 5, "Physics")
+	if err != nil {
+		t.Fatalf("ListPages() error = %v", err)
+	}
+	if len(result.Pages) != 1 {
+		t.Fatalf("Expected 1 page, got %d", len(result.Pages))
+	}
+	if result.Pages[0].Title != "Quantum Computing" {
+		t.Errorf("Expected title 'Quantum Computing', got %s", result.Pages[0].Title)
+	}
+	if result.TotalCount != 125000 {
+		t.Errorf("Expected TotalCount 125000, got %d", result.TotalCount)
+	}
+	if !result.HasMore {
+		t.Error("Expected HasMore to be true")
+	}
+}
+
+func TestClientStats(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/stats" {
+			t.Errorf("Expected path /api/stats, got %s", r.URL.Path)
+		}
+
+		response := StatsResponse{
+			TotalPages:      "6092140",
+			TotalViews:      "0",
+			AvgViewsPerPage: 0,
+			IndexSizeBytes:  "194716652399",
+			StatsTimestamp:  "1778900115",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{BaseURL: server.URL})
+
+	result, err := client.Stats()
+	if err != nil {
+		t.Fatalf("Stats() error = %v", err)
+	}
+	if result.TotalPages != "6092140" {
+		t.Errorf("Expected TotalPages '6092140', got %s", result.TotalPages)
+	}
+	if result.IndexSizeBytes != "194716652399" {
+		t.Errorf("Unexpected IndexSizeBytes")
+	}
+}
+
+func TestClientPagePreview(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/page-preview" {
+			t.Errorf("Expected path /api/page-preview, got %s", r.URL.Path)
+		}
+		slug := r.URL.Query().Get("slug")
+		if slug != "Test_Article" {
+			t.Errorf("Expected slug Test_Article, got %s", slug)
+		}
+
+		response := PagePreviewResponse{
+			Found: true,
+			Page: PreviewPageData{
+				Title: "Test Article",
+				Slug:  "Test_Article",
+				Stats: ListPageStats{
+					TotalViews:   "4500",
+					QualityScore: 0.88,
+				},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{BaseURL: server.URL})
+
+	result, err := client.PagePreview("Test_Article")
+	if err != nil {
+		t.Fatalf("PagePreview() error = %v", err)
+	}
+	if !result.Found {
+		t.Error("Expected Found to be true")
+	}
+	if result.Page.Title != "Test Article" {
+		t.Errorf("Expected title 'Test Article', got %s", result.Page.Title)
+	}
+}
+
+func TestClientTTS(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/tts" {
+			t.Errorf("Expected path /api/tts, got %s", r.URL.Path)
+		}
+
+		response := TTSResponse{
+			Slug: "Quantum_computing",
+			Sections: []TTSSection{
+				{ID: "intro", Title: "Quantum computing", PartCount: 1},
+				{ID: "historical-development", Title: "Historical Development", PartCount: 1},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{BaseURL: server.URL})
+
+	result, err := client.TTS("Quantum_computing")
+	if err != nil {
+		t.Fatalf("TTS() error = %v", err)
+	}
+	if result.Slug != "Quantum_computing" {
+		t.Errorf("Unexpected slug")
+	}
+	if len(result.Sections) != 2 {
+		t.Fatalf("Expected 2 sections, got %d", len(result.Sections))
+	}
+}
+
+func TestClientCreateEditRequest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/create-edit-request" {
+			t.Errorf("Expected path /api/create-edit-request, got %s", r.URL.Path)
+		}
+		if r.Method != http.MethodPost {
+			t.Errorf("Expected POST, got %s", r.Method)
+		}
+
+		response := CreateEditResponse{
+			Success: true,
+			ID:      "edit-456",
+			Status:  "PENDING",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{BaseURL: server.URL})
+
+	req := &CreateEditRequest{
+		Slug:    "Test_Article",
+		Summary: "Fixed a small error",
+		Content: "Updated paragraph",
+	}
+
+	result, err := client.CreateEditRequest(req)
+	if err != nil {
+		t.Fatalf("CreateEditRequest() error = %v", err)
+	}
+	if !result.Success {
+		t.Error("Expected success to be true")
+	}
+	if result.ID != "edit-456" {
+		t.Errorf("Expected ID 'edit-456', got %s", result.ID)
+	}
+}
+
+func TestClientCreateEditRequest_AuthRequired(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"success":false,"error":"Authentication required"}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{BaseURL: server.URL})
+
+	req := &CreateEditRequest{Slug: "x", Summary: "test"}
+
+	_, err := client.CreateEditRequest(req)
+	if err == nil {
+		t.Fatal("Expected error for auth required")
+	}
+	if !strings.Contains(err.Error(), "401") && !strings.Contains(err.Error(), "Authentication") {
+		t.Errorf("Expected auth-related error, got: %v", err)
 	}
 }

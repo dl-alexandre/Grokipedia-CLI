@@ -1,3 +1,5 @@
+//go:build legacy
+
 package cmd
 
 import (
@@ -30,8 +32,17 @@ var (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "grokipedia",
-	Short: "A CLI for the Grokipedia API",
-	Long: `Grokipedia CLI provides access to the Grokipedia knowledge base.
+	Short: "Unofficial CLI for the Grokipedia API [LEGACY]",
+	Long: `Unofficial community CLI for the Grokipedia API (grokipedia.com).
+
+⚠️  LEGACY IMPLEMENTATION
+This Cobra-based CLI (in cmd/) is no longer the active implementation.
+It is missing newer commands (list, stats, preview, tts, random, edit).
+
+The actively maintained implementation lives in internal/cli (Kong-based)
+and is what the distributed binary uses.
+
+Not affiliated with or endorsed by xAI.
 
 Use the search command to find pages, the page command to view content,
 and other commands to interact with edit requests and API constants.`,
@@ -40,6 +51,11 @@ and other commands to interact with edit requests and API constants.`,
 		if cmd.Name() == "help" || cmd.Name() == "completion" {
 			return nil
 		}
+
+		// Deprecation warning for legacy Cobra path
+		fmt.Fprintln(os.Stderr, "WARNING: You are using the legacy Cobra-based CLI.")
+		fmt.Fprintln(os.Stderr, "         The active implementation is in internal/cli (Kong).")
+		fmt.Fprintln(os.Stderr, "         Newer commands (list, stats, preview, tts, random, edit) are not available here.")
 
 		// Load configuration
 		flags := config.GlobalFlags{

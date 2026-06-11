@@ -4,6 +4,12 @@
 
 A command-line interface for the Grokipedia API.
 
+> **Unofficial community tool** — not affiliated with or endorsed by xAI.
+
+> **Note:** The active implementation uses the Kong CLI framework in `internal/cli`.  
+> The Cobra-based code in `cmd/` is legacy, incomplete, and no longer maintained.  
+> Newer commands (`list`, `stats`, `preview`, `tts`, `random`, `edit`) only exist in the active path.
+
 ## Installation
 
 ### From Source
@@ -36,6 +42,12 @@ grokipedia edits-by-slug Python_programming_language
 
 # Get API constants
 grokipedia constants
+
+# Explore randomly
+grokipedia random
+
+# Browse pages
+grokipedia list --limit 10
 ```
 
 ## Configuration
@@ -165,6 +177,108 @@ Flags:
   --limit int      Maximum results (1-100) (default 10)
   --offset int     Pagination offset (default 0)
   --format string  Output format: table, json (default "table")
+```
+
+### links
+
+List internal and external links (citations) from a page.
+
+```bash
+grokipedia links <slug> [flags]
+
+Flags:
+  --internal         Show only internal page links
+  --external         Show only external links (citations)
+  --tree             Display links in a tree structure
+  --format string    Output format: table, json, markdown, tree (default "table")
+```
+
+### suggest
+
+Suggest a new article to be created by Grok.
+
+```bash
+grokipedia suggest <title> [flags]
+
+Flags:
+  --content string   Optional content or details for the article
+  --sources string   Optional sources or references
+  --format string    Output format: text, json (default "text")
+```
+
+### edit
+
+Suggest an edit to an existing article (requires xAI account sign-in via the website).
+
+```bash
+grokipedia edit <slug> [flags]
+
+Flags:
+  --summary string       Short summary of the change (required)
+  --content string       Proposed replacement content
+  --sources string       Supporting sources
+  --original-text string The original text being corrected
+  --format string        Output format: text, json (default "text")
+```
+
+### list
+
+Browse and discover pages with pagination and optional category filtering.
+
+```bash
+grokipedia list [flags]
+
+Flags:
+  --limit int       Maximum results (1-100) (default 20)
+  --offset int      Pagination offset (default 0)
+  --category string Filter by category
+  --format string   Output format: table, json (default "table")
+  --counts          Show total count and has-more info (default true)
+```
+
+### stats
+
+Show global Grokipedia statistics.
+
+```bash
+grokipedia stats [flags]
+
+Flags:
+  --format string   Output format: table, json (default "table")
+```
+
+### preview
+
+Lightweight page preview (useful for discovery without loading full content).
+
+```bash
+grokipedia preview <slug> [flags]
+
+Flags:
+  --format string   Output format: markdown, json, plain (default "markdown")
+```
+
+### tts
+
+List text-to-speech sections available for reading an article aloud.
+
+```bash
+grokipedia tts <slug> [flags]
+
+Flags:
+  --format string   Output format: table, json, list (default "table")
+```
+
+### random
+
+Show a random page (excellent for exploration and serendipity).
+
+```bash
+grokipedia random [flags]
+
+Flags:
+  --content         Fetch and display the full page content
+  --format string   Output format: markdown, json, plain (default "markdown")
 ```
 
 ## Global Flags

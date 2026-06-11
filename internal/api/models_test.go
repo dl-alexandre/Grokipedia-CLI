@@ -263,3 +263,105 @@ func TestLoadFixtures(t *testing.T) {
 		})
 	}
 }
+
+// =============================================================================
+// Tests for new models (list-pages, stats, preview, tts, edit request)
+// =============================================================================
+
+func TestListPagesResponseSerialization(t *testing.T) {
+	resp := ListPagesResponse{
+		Pages: []ListPageItem{
+			{
+				Slug:  "ai_safety",
+				Title: "AI Safety",
+				Stats: ListPageStats{TotalViews: "3200", QualityScore: 0.91},
+			},
+		},
+		TotalCount: 45000,
+		HasMore:    true,
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("Failed to marshal ListPagesResponse: %v", err)
+	}
+
+	var decoded ListPagesResponse
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("Failed to unmarshal ListPagesResponse: %v", err)
+	}
+
+	if len(decoded.Pages) != 1 || decoded.Pages[0].Slug != "ai_safety" {
+		t.Error("ListPagesResponse roundtrip failed")
+	}
+	if !decoded.HasMore {
+		t.Error("Expected HasMore true")
+	}
+}
+
+func TestStatsResponseSerialization(t *testing.T) {
+	resp := StatsResponse{
+		TotalPages:     "6092140",
+		TotalViews:     "0",
+		IndexSizeBytes: "194716652399",
+		StatsTimestamp: "1778900115",
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("Failed to marshal StatsResponse: %v", err)
+	}
+
+	var decoded StatsResponse
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("Failed to unmarshal StatsResponse: %v", err)
+	}
+
+	if decoded.TotalPages != "6092140" {
+		t.Errorf("StatsResponse roundtrip failed on TotalPages")
+	}
+}
+
+func TestCreateEditRequestResponse(t *testing.T) {
+	resp := CreateEditResponse{
+		Success: false,
+		Message: "Authentication required",
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("Failed to marshal CreateEditResponse: %v", err)
+	}
+
+	var decoded CreateEditResponse
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("Failed to unmarshal: %v", err)
+	}
+
+	if decoded.Success || decoded.Message != "Authentication required" {
+		t.Error("CreateEditResponse roundtrip failed")
+	}
+}
+
+func TestTTSResponseSerialization(t *testing.T) {
+	resp := TTSResponse{
+		Slug: "test_page",
+		Sections: []TTSSection{
+			{ID: "intro", Title: "Introduction", PartCount: 2},
+		},
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("Failed to marshal TTSResponse: %v", err)
+	}
+
+	var decoded TTSResponse
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("Failed to unmarshal TTSResponse: %v", err)
+	}
+
+	if len(decoded.Sections) != 1 || decoded.Sections[0].ID != "intro" {
+		t.Error("TTSResponse roundtrip failed")
+	}
+}
