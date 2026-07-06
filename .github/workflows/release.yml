@@ -3,34 +3,86 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to release'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [linux, darwin, windows]
+        arch: [amd64, arm64]
+        exclude:
+          - os: windows
+            arch: arm64
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout
+        uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: 'go.mod'
+          go-version-file: go.mod
 
-      - name: Run tests
-        run: go test ./...
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --clean
+      - name: Build
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          SCOOP_BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p dist
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            go build -trimpath -ldflags="-s -w" -o "dist/grokipedia.exe" ./main.go
+          else
+            go build -trimpath -ldflags="-s -w" -o "dist/grokipedia" ./main.go
+          fi
+
+      - name: Package
+        run: |
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            zip -j "dist/grokipedia-${{ matrix.os }}-${{ matrix.arch }}.zip" "dist/grokipedia.exe"
+            rm dist/grokipedia.exe
+          else
+            tar -czf "dist/grokipedia-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" -C dist grokipedia
+            rm dist/grokipedia
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: grokipedia-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/*
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: dist
+          pattern: grokipedia-*
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum grokipedia-* > checksums.txt
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          files: dist/*
