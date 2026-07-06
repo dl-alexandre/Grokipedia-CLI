@@ -126,20 +126,7 @@ brews:
     install: |
       bin.install "grokipedia"
 
-flatpak:
-  - app_id: net.ddns.dl-alexandre.GrokipediaCLI
-    runtime: org.freedesktop.Platform
-    runtime_version: "24.08"
-    sdk: org.freedesktop.Sdk
-    finish_args:
-      - --share=network
-      - --filesystem=home
 
-srpm:
-  enabled: true
-  summary: "Grokipedia CLI - command-line interface for the Grokipedia API"
-  license: MIT
-  url: https://github.com/dl-alexandre/Grokipedia-CLI
 
 scoops:
   - repository:
