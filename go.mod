@@ -3,10 +3,10 @@ module github.com/grokipedia/cli
 go 1.26.0
 
 require (
-	github.com/alecthomas/kong v1.15.0
+	github.com/alecthomas/kong v1.16.0
 	github.com/dl-alexandre/cli-tools v0.0.1
 	github.com/go-resty/resty/v2 v2.17.2
-	github.com/mattn/go-isatty v0.0.22
+	github.com/mattn/go-isatty v0.0.23
 	github.com/rodaine/table v1.3.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
