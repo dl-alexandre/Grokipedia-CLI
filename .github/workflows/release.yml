@@ -19,7 +19,26 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: |
+          go vet ./...
+          go test -race ./...
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -44,13 +63,29 @@ jobs:
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 0
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
           mkdir -p dist
+          version="v${RELEASE_TAG#v}"
+          commit="$(git rev-parse --short=12 HEAD)"
+          build_time="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          ldflags="-s -w -X main.version=${version} -X main.gitCommit=${commit} -X main.buildTime=${build_time}"
           if [ "${{ matrix.os }}" = "windows" ]; then
-            go build -trimpath -ldflags="-s -w" -o "dist/grokipedia.exe" ./main.go
+            go build -trimpath -ldflags="$ldflags" -o "dist/grokipedia.exe" ./main.go
           else
-            go build -trimpath -ldflags="-s -w" -o "dist/grokipedia" ./main.go
+            go build -trimpath -ldflags="$ldflags" -o "dist/grokipedia" ./main.go
           fi
+
+      - name: Verify build metadata
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          version="v${RELEASE_TAG#v}"
+          output="$(./dist/grokipedia version)"
+          printf '%s\n' "$output"
+          grep -F "grokipedia ${version} " <<< "$output"
 
       - name: Package
         run: |

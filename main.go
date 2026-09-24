@@ -6,9 +6,8 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
-	"github.com/dl-alexandre/cli-tools/cache"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/cli"
 	cliver "github.com/dl-alexandre/cli-tools/version"
-	"github.com/grokipedia/cli/internal/cli"
 )
 
 var (
@@ -45,9 +44,7 @@ func main() {
 		// Small delay to not interfere with command output
 		time.Sleep(100 * time.Millisecond)
 
-		// Use a minimal cache for update checks
-		updateCache := cache.New(cache.DefaultDir("grokipedia"), 24*time.Hour)
-		cli.AutoUpdateCheck(updateCache)
+		cli.AutoUpdateCheck()
 	}()
 
 	if err := ctx.Run(&c.Globals); err != nil {

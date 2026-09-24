@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grokipedia/cli/internal/api"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/api"
 )
 
 func TestPageCommandValidation(t *testing.T) {

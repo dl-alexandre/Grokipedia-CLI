@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/grokipedia/cli/internal/api"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/api"
 )
 
 // =============================================================================

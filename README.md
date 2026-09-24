@@ -1,6 +1,6 @@
 # Grokipedia CLI
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/grokipedia/cli)](https://goreportcard.com/report/github.com/grokipedia/cli)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dl-alexandre/Grokipedia-CLI)](https://goreportcard.com/report/github.com/dl-alexandre/Grokipedia-CLI)
 
 A command-line interface for the Grokipedia API.
 
@@ -15,7 +15,7 @@ A command-line interface for the Grokipedia API.
 ### From Source
 
 ```bash
-go install github.com/grokipedia/cli@latest
+go install github.com/dl-alexandre/Grokipedia-CLI@latest
 ```
 
 ### Pre-built Binaries

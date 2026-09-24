@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grokipedia/cli/internal/api"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/api"
 )
 
 func TestConstantsCommandValidation(t *testing.T) {

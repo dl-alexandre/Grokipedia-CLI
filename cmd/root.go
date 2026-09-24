@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/grokipedia/cli/internal/api"
-	"github.com/grokipedia/cli/internal/cache"
-	"github.com/grokipedia/cli/internal/config"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/api"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/cache"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/config"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
