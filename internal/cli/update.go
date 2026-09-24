@@ -91,7 +91,7 @@ func hasFreshUpdateCache(cacheDir string, ttl time.Duration) bool {
 	if err != nil {
 		return false
 	}
-	defer root.Close()
+	defer func() { _ = root.Close() }()
 
 	data, err := root.ReadFile("update_check.json")
 	if err != nil {
