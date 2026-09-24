@@ -7,7 +7,7 @@ A command-line interface for the Grokipedia API.
 > **Unofficial community tool** — not affiliated with or endorsed by xAI.
 
 > **Note:** The active implementation uses the Kong CLI framework in `internal/cli`.  
-> The Cobra-based code in `cmd/` is legacy, incomplete, and no longer maintained.  
+> The Cobra-based files in `cmd/` (excluding the `cmd/grokipedia` source-install entry point) are legacy, incomplete, and no longer maintained.
 > Newer commands (`list`, `stats`, `preview`, `tts`, `random`, `edit`) only exist in the active path.
 
 ## Installation
@@ -15,7 +15,7 @@ A command-line interface for the Grokipedia API.
 ### From Source
 
 ```bash
-go install github.com/dl-alexandre/Grokipedia-CLI@latest
+go install github.com/dl-alexandre/Grokipedia-CLI/cmd/grokipedia@latest
 ```
 
 ### Pre-built Binaries
@@ -333,6 +333,13 @@ These flags work with all commands:
 - `3` - Rate limited (429 after retries)
 - `4` - Invalid arguments (bad flags, unsupported format, missing required arg)
 
+## Releases
+
+Tag the CLI with a `v*` release tag. The release workflow validates and tests
+the tag, builds portable binaries with embedded version metadata, publishes the
+GitHub release, and updates the Homebrew formula and Scoop manifest from the
+release checksums.
+
 ## Caching
 
 The CLI caches API responses to improve performance. Cache files are stored in `~/.grokipedia/cache/` by default. The cache respects TTL settings and automatically invalidates expired entries.
@@ -369,14 +376,18 @@ make lint
 
 ```
 grokipedia-cli/
-├── cmd/                    # Legacy Cobra implementation (build tag: legacy)
+├── cmd/
+│   ├── grokipedia/        # Named source-install entry point
+│   └── ...                # Legacy Cobra implementation (build tag: legacy)
 ├── internal/
 │   ├── api/               # HTTP client and models
+│   ├── app/               # Shared application bootstrap
 │   ├── cache/             # File caching
 │   ├── cli/               # Active Kong command implementation
 │   ├── config/            # Configuration management
 │   └── formatter/         # Output formatters
-├── main.go                # Entry point
+├── main.go                # Root entry point
+├── scripts/               # Release metadata automation
 └── testdata/              # Test fixtures
 ```
 

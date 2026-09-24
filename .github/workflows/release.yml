@@ -72,9 +72,9 @@ jobs:
           build_time="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
           ldflags="-s -w -X main.version=${version} -X main.gitCommit=${commit} -X main.buildTime=${build_time}"
           if [ "${{ matrix.os }}" = "windows" ]; then
-            go build -trimpath -ldflags="$ldflags" -o "dist/grokipedia.exe" ./main.go
+            go build -trimpath -ldflags="$ldflags" -o "dist/grokipedia.exe" ./cmd/grokipedia
           else
-            go build -trimpath -ldflags="$ldflags" -o "dist/grokipedia" ./main.go
+            go build -trimpath -ldflags="$ldflags" -o "dist/grokipedia" ./cmd/grokipedia
           fi
 
       - name: Verify build metadata
@@ -106,6 +106,8 @@ jobs:
 
   release:
     needs: build
+    outputs:
+      tag: ${{ steps.tag.outputs.name }}
     runs-on: ubuntu-latest
     steps:
       - name: Resolve release tag
@@ -156,3 +158,83 @@ jobs:
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           files: dist/*
+
+  update-packages:
+    needs: release
+    if: ${{ needs.release.outputs.tag != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - name: Checkout Homebrew tap
+        uses: actions/checkout@v7
+        with:
+          repository: dl-alexandre/homebrew-tap
+          ref: master
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: package/homebrew
+
+      - name: Checkout Scoop bucket
+        uses: actions/checkout@v7
+        with:
+          repository: dl-alexandre/scoop-bucket
+          ref: main
+          token: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+          path: package/scoop
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          mkdir -p release-assets
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'checksums.txt' \
+            --dir release-assets
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'grokipedia-*' \
+            --dir release-assets
+
+      - name: Update package metadata
+        env:
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          ./scripts/update-release-packages.sh \
+            "$RELEASE_TAG" \
+            "$GITHUB_WORKSPACE/release-assets" \
+            "$GITHUB_WORKSPACE/package/homebrew" \
+            "$GITHUB_WORKSPACE/package/scoop"
+
+      - name: Commit Homebrew formula
+        working-directory: package/homebrew
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/grokipedia.rb
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Homebrew formula is already current"
+          else
+            git commit -m "Brew formula update for grokipedia version ${{ needs.release.outputs.tag }}"
+            git push origin HEAD:master
+          fi
+
+      - name: Commit Scoop manifest
+        working-directory: package/scoop
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bucket/grokipedia.json
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Scoop manifest is already current"
+          else
+            git commit -m "Scoop update for grokipedia version ${{ needs.release.outputs.tag }}"
+            git push origin HEAD:main
+
+          fi

@@ -4,7 +4,9 @@ Thank you for your interest in contributing! This document explains how to contr
 
 ## Project Structure
 
-- `main.go` — Entry point. Uses the Kong-based CLI.
+- `main.go` — Root entry point. Uses the shared application runner.
+- `cmd/grokipedia/` — Named source-install entry point (`go install .../cmd/grokipedia@latest`).
+- `internal/app/` — Shared application bootstrap and version resolution.
 - `internal/cli/` — **Active implementation** (all new development happens here). Uses the Kong framework.
 - `internal/api/` — HTTP client and response models for the Grokipedia API.
 - `internal/cache/` — File-based response caching.
