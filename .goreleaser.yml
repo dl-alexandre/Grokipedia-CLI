@@ -21,9 +21,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/dl-alexandre/cli-tools/version.Version={{.Version}}
-      - -X github.com/dl-alexandre/cli-tools/version.GitCommit={{.Commit}}
-      - -X github.com/dl-alexandre/cli-tools/version.BuildTime={{.Date}}
+      - -X main.version={{.Version}}
+      - -X main.gitCommit={{.Commit}}
+      - -X main.buildTime={{.Date}}
 
 archives:
   - id: default
@@ -94,7 +94,7 @@ release:
 
     ### Go Install
     ```bash
-    go install github.com/grokipedia/cli@v{{.Version}}
+    go install github.com/dl-alexandre/Grokipedia-CLI@v{{.Version}}
     ```
 
     ### Download Binary

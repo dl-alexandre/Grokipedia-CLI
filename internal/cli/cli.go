@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
-	"github.com/grokipedia/cli/internal/api"
-	"github.com/grokipedia/cli/internal/cache"
-	"github.com/grokipedia/cli/internal/config"
-	"github.com/grokipedia/cli/internal/formatter"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/api"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/cache"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/config"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/formatter"
 	"github.com/mattn/go-isatty"
 	"github.com/rodaine/table"
 )

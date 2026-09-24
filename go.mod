@@ -1,4 +1,4 @@
-module github.com/grokipedia/cli
+module github.com/dl-alexandre/Grokipedia-CLI
 
 go 1.26.0
 

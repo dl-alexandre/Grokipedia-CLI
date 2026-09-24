@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/grokipedia/cli/internal/api"
-	"github.com/grokipedia/cli/internal/formatter"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/api"
+	"github.com/dl-alexandre/Grokipedia-CLI/internal/formatter"
 	"github.com/spf13/cobra"
 )
 
