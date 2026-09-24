@@ -20,11 +20,14 @@ go install github.com/grokipedia/cli@latest
 
 ### Pre-built Binaries
 
-Download the latest release for your platform from the [releases page](https://github.com/grokipedia/cli/releases).
+Download the latest release for your platform from the [releases page](https://github.com/dl-alexandre/Grokipedia-CLI/releases).
 
 ## Quick Start
 
 ```bash
+# Check the installed CLI
+grokipedia version
+
 # Search for pages
 grokipedia search "python programming"
 
@@ -99,6 +102,25 @@ All configuration options can be set via environment variables:
 - `GROKIPEDIA_DEBUG` - Enable debug output
 - `GROKIPEDIA_COLOR` - Color mode: auto, always, never
 
+## Current API compatibility (September 2026)
+
+The September 22, 2026 Grokipedia v0.2 announcement is a **web product
+preview**; it does not announce a Grokipedia CLI v0.2 release or a stable public
+API contract. The CLI remains independently versioned and currently targets
+the live public endpoints, which have changed independently of that
+announcement.
+
+The current client handles the live API shapes and older compatible deployments where practical:
+
+- Search and typeahead use the current `query` parameter (with a legacy `q` fallback for search).
+- Full pages use `/api/page-preview`; `/api/page` is retained as a fallback for older deployments.
+- Search and page view counts are accepted as either JSON strings or numbers.
+- Typeahead returns result objects rather than a legacy `suggestions` string array.
+- Edit-history results use the current `userId`, `createdAt`, and review fields.
+- Article and edit submissions use the current description/evidence payload fields.
+
+Grokipedia does not currently expose the old `/api/constants` endpoint, and the global edit feed can be unavailable; use `edits-by-slug` for per-article history. The CLI reports these cases clearly instead of treating the web preview as a CLI feature.
+
 ## Commands
 
 ### search
@@ -135,19 +157,20 @@ Get search suggestions.
 grokipedia typeahead <query> [flags]
 
 Flags:
-  --limit int      Maximum suggestions (1-50) (default 5)
+  --limit int      Maximum suggestions (1-50) (default 10)
   --format string  Output format: list, json (default "list")
 ```
 
 ### constants
 
-Retrieve API constants.
+Retrieve legacy API constants. The current Grokipedia site no longer exposes
+`/api/constants`, so this command reports that endpoint as unavailable unless
+it is being used with an older compatible deployment.
 
 ```bash
 grokipedia constants [flags]
 
 Flags:
-  --key string     Filter to a single constant key
   --format string  Output format: json, yaml, table (default "json")
 ```
 
@@ -201,9 +224,10 @@ Suggest a new article to be created by Grok.
 grokipedia suggest <title> [flags]
 
 Flags:
-  --content string   Optional content or details for the article
-  --sources string   Optional sources or references
-  --format string    Output format: text, json (default "text")
+  --description string  Optional details/description for the article
+  --content string      Deprecated alias for --description
+  --sources string      Optional legacy sources or references
+  --format string       Output format: text, json (default "text")
 ```
 
 ### edit
@@ -214,11 +238,15 @@ Suggest an edit to an existing article (requires xAI account sign-in via the web
 grokipedia edit <slug> [flags]
 
 Flags:
-  --summary string       Short summary of the change (required)
-  --content string       Proposed replacement content
-  --sources string       Supporting sources
-  --original-text string The original text being corrected
-  --format string        Output format: text, json (default "text")
+  --summary string          Short summary of the change (required)
+  --proposed-content string Proposed replacement content
+  --original-content string The original text being corrected
+  --section-title string    Section containing the proposed change
+  --evidence string         Supporting source URL (repeatable)
+  --content string          Deprecated alias for --proposed-content
+  --original-text string    Deprecated alias for --original-content
+  --sources string          Deprecated comma/space-separated source URLs
+  --format string           Output format: text, json (default "text")
 ```
 
 ### list
@@ -286,14 +314,14 @@ Flags:
 These flags work with all commands:
 
 ```bash
---api-url string      API base URL (env: GROKIPEDIA_API_URL)
+--apiurl string       API base URL (env: GROKIPEDIA_API_URL)
 --timeout int         Request timeout in seconds (env: GROKIPEDIA_TIMEOUT)
 --no-cache            Disable caching (env: GROKIPEDIA_NO_CACHE)
 --cache-dir string    Cache directory (env: GROKIPEDIA_CACHE_DIR)
 --cache-ttl int       Cache TTL in seconds (env: GROKIPEDIA_CACHE_TTL)
 -v, --verbose         Enable verbose output (env: GROKIPEDIA_VERBOSE)
 --debug               Enable debug output (env: GROKIPEDIA_DEBUG)
---config string       Config file path (env: GROKIPEDIA_CONFIG)
+--config-file string  Config file path (env: GROKIPEDIA_CONFIG)
 --color string        Color mode: auto, always, never (env: GROKIPEDIA_COLOR)
 ```
 
@@ -341,10 +369,11 @@ make lint
 
 ```
 grokipedia-cli/
-├── cmd/                    # Cobra commands
+├── cmd/                    # Legacy Cobra implementation (build tag: legacy)
 ├── internal/
 │   ├── api/               # HTTP client and models
 │   ├── cache/             # File caching
+│   ├── cli/               # Active Kong command implementation
 │   ├── config/            # Configuration management
 │   └── formatter/         # Output formatters
 ├── main.go                # Entry point

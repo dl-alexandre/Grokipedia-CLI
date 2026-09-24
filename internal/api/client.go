@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -11,6 +12,21 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
+)
+
+const (
+	searchEndpoint      = "/api/full-text-search"
+	typeaheadEndpoint   = "/api/typeahead"
+	pageEndpoint        = "/api/page-preview"
+	legacyPageEndpoint  = "/api/page"
+	constantsEndpoint   = "/api/constants"
+	editsEndpoint       = "/api/list-edit-requests"
+	editsBySlugEndpoint = "/api/list-edit-requests-by-slug"
+	suggestEndpoint     = "/api/create-article-request"
+	createEditEndpoint  = "/api/create-edit-request"
+	listPagesEndpoint   = "/api/list-pages"
+	statsEndpoint       = "/api/stats"
+	ttsEndpoint         = "/api/tts"
 )
 
 // Client wraps the HTTP client for Grokipedia API
@@ -175,14 +191,16 @@ func (c *Client) parseRetryAfter(resp *resty.Response) int {
 	return seconds
 }
 
-// Search performs a full-text search
+// Search performs a full-text search.
+//
+// The current public API uses the `query` parameter. The small fallback to
+// `q` keeps the client usable with older compatible deployments and cached
+// test servers.
 func (c *Client) Search(query string, limit, offset int) (*SearchResponse, error) {
-	req := c.httpClient.R().
-		SetQueryParam("q", query).
-		SetQueryParam("limit", strconv.Itoa(limit)).
-		SetQueryParam("offset", strconv.Itoa(offset))
-
-	resp, err := c.doRequest(req, "/api/full-text-search")
+	resp, err := c.doRequest(c.searchRequest(query, limit, offset, "query"), searchEndpoint)
+	if err != nil && isMissingQueryError(err) {
+		resp, err = c.doRequest(c.searchRequest(query, limit, offset, "q"), searchEndpoint)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -195,33 +213,86 @@ func (c *Client) Search(query string, limit, offset int) (*SearchResponse, error
 	return &result, nil
 }
 
-// Page retrieves a page by slug
+func (c *Client) searchRequest(query string, limit, offset int, queryParam string) *resty.Request {
+	return c.httpClient.R().
+		SetQueryParam(queryParam, query).
+		SetQueryParam("limit", strconv.Itoa(limit)).
+		SetQueryParam("offset", strconv.Itoa(offset))
+}
+
+func isMissingQueryError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "missing required parameter") &&
+		(strings.Contains(message, "query") || strings.Contains(message, "q"))
+}
+
+// Page retrieves a page by slug.
+//
+// Grokipedia's live API now serves full article data from /api/page-preview;
+// /api/page is retained as a fallback for older compatible deployments.
 func (c *Client) Page(slug string, includeContent, validateLinks bool) (*PageResponse, error) {
+	preview, err := c.fetchPagePreview(slug)
+	if err == nil {
+		result := &PageResponse{
+			Found: preview.Found,
+			Page:  preview.Page.ToPageData(),
+		}
+		if !includeContent {
+			result.Page.Content = ""
+		}
+		// validateLinks is kept in the public method for compatibility. The
+		// current preview endpoint does not expose link validation as a query
+		// parameter, so link extraction is handled by the CLI when needed.
+		_ = validateLinks
+		return result, nil
+	}
+
+	var notFound *NotFoundError
+	if !errors.As(err, &notFound) {
+		return nil, err
+	}
+
+	// Fall back to the original endpoint for older deployments.
 	req := c.httpClient.R().
 		SetQueryParam("slug", slug).
 		SetQueryParam("includeContent", strconv.FormatBool(includeContent)).
 		SetQueryParam("validateLinks", strconv.FormatBool(validateLinks))
-
-	resp, err := c.doRequest(req, "/api/page")
-	if err != nil {
-		return nil, err
+	resp, legacyErr := c.doRequest(req, legacyPageEndpoint)
+	if legacyErr != nil {
+		return nil, legacyErr
 	}
 
 	var result PageResponse
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse page response: %w", err)
 	}
-
 	return &result, nil
 }
 
-// Typeahead retrieves search suggestions
+func (c *Client) fetchPagePreview(slug string) (*PagePreviewResponse, error) {
+	req := c.httpClient.R().SetQueryParam("slug", slug)
+	resp, err := c.doRequest(req, pageEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	var result PagePreviewResponse
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse page-preview response: %w", err)
+	}
+	return &result, nil
+}
+
+// Typeahead retrieves search suggestions.
 func (c *Client) Typeahead(query string, limit int) (*TypeaheadResponse, error) {
 	req := c.httpClient.R().
-		SetQueryParam("q", query).
+		SetQueryParam("query", query).
 		SetQueryParam("limit", strconv.Itoa(limit))
 
-	resp, err := c.doRequest(req, "/api/typeahead")
+	resp, err := c.doRequest(req, typeaheadEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +309,7 @@ func (c *Client) Typeahead(query string, limit int) (*TypeaheadResponse, error) 
 func (c *Client) Constants() (ConstantsResponse, error) {
 	req := c.httpClient.R()
 
-	resp, err := c.doRequest(req, "/api/constants")
+	resp, err := c.doRequest(req, constantsEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +336,7 @@ func (c *Client) Edits(limit int, status []string, excludeUsers []string, includ
 		req.SetQueryParam("excludeUserId[]", user)
 	}
 
-	resp, err := c.doRequest(req, "/api/list-edit-requests")
+	resp, err := c.doRequest(req, editsEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +356,7 @@ func (c *Client) EditsBySlug(slug string, limit, offset int) (*EditsBySlugRespon
 		SetQueryParam("limit", strconv.Itoa(limit)).
 		SetQueryParam("offset", strconv.Itoa(offset))
 
-	resp, err := c.doRequest(req, "/api/list-edit-requests-by-slug")
+	resp, err := c.doRequest(req, editsBySlugEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +380,7 @@ func (c *Client) SuggestArticle(req *SuggestArticleRequest) (*SuggestArticleResp
 		SetHeader("Content-Type", "application/json").
 		SetBody(payload)
 
-	resp, err := c.doRequestWithMethod(httpReq, "/api/create-article-request", resty.MethodPost)
+	resp, err := c.doRequestWithMethod(httpReq, suggestEndpoint, resty.MethodPost)
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +403,7 @@ func (c *Client) ListPages(limit, offset int, category string) (*ListPagesRespon
 		req.SetQueryParam("category", category)
 	}
 
-	resp, err := c.doRequest(req, "/api/list-pages")
+	resp, err := c.doRequest(req, listPagesEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +420,7 @@ func (c *Client) ListPages(limit, offset int, category string) (*ListPagesRespon
 func (c *Client) Stats() (*StatsResponse, error) {
 	req := c.httpClient.R()
 
-	resp, err := c.doRequest(req, "/api/stats")
+	resp, err := c.doRequest(req, statsEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -362,22 +433,9 @@ func (c *Client) Stats() (*StatsResponse, error) {
 	return &result, nil
 }
 
-// PagePreview retrieves a lightweight page preview by slug
+// PagePreview retrieves a lightweight page preview by slug.
 func (c *Client) PagePreview(slug string) (*PagePreviewResponse, error) {
-	req := c.httpClient.R().
-		SetQueryParam("slug", slug)
-
-	resp, err := c.doRequest(req, "/api/page-preview")
-	if err != nil {
-		return nil, err
-	}
-
-	var result PagePreviewResponse
-	if err := json.Unmarshal(resp.Body(), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse page-preview response: %w", err)
-	}
-
-	return &result, nil
+	return c.fetchPagePreview(slug)
 }
 
 // TTS retrieves text-to-speech section information for a page
@@ -385,7 +443,7 @@ func (c *Client) TTS(slug string) (*TTSResponse, error) {
 	req := c.httpClient.R().
 		SetQueryParam("slug", slug)
 
-	resp, err := c.doRequest(req, "/api/tts")
+	resp, err := c.doRequest(req, ttsEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +467,7 @@ func (c *Client) CreateEditRequest(req *CreateEditRequest) (*CreateEditResponse,
 		SetHeader("Content-Type", "application/json").
 		SetBody(payload)
 
-	resp, err := c.doRequestWithMethod(httpReq, "/api/create-edit-request", resty.MethodPost)
+	resp, err := c.doRequestWithMethod(httpReq, createEditEndpoint, resty.MethodPost)
 	if err != nil {
 		return nil, err
 	}

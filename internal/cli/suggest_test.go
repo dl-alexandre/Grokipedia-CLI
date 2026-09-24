@@ -10,6 +10,13 @@ import (
 	"github.com/grokipedia/cli/internal/api"
 )
 
+func TestArticleBodyRemovesDuplicateTitle(t *testing.T) {
+	body := articleBody("# Python\n\nArticle body", "Python")
+	if body != "Article body" {
+		t.Errorf("Expected duplicate title to be removed, got %q", body)
+	}
+}
+
 func TestOutputSuggestResultsJSON(t *testing.T) {
 	resp := &api.SuggestArticleResponse{
 		Success: true,

@@ -146,6 +146,24 @@ func TestEditCmd_Run_AuthError(t *testing.T) {
 	}
 }
 
+func TestEditsBySlugCmd_Run(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/list-edit-requests-by-slug" {
+			t.Errorf("Expected edits-by-slug endpoint, got %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"editRequests":[{"id":"edit-1","slug":"Test_page","userId":"user-1","status":"EDIT_REQUEST_STATUS_APPROVED","createdAt":1701900000}],"totalCount":1,"hasMore":false}`))
+	}))
+	defer server.Close()
+
+	client := api.NewClient(api.ClientOptions{BaseURL: server.URL})
+	globals := newTestGlobals(client)
+	cmd := &EditsBySlugCmd{Slug: "Test_page", Limit: 1, Format: "json"}
+	if err := cmd.Run(globals); err != nil {
+		t.Fatalf("EditsBySlugCmd.Run() error = %v", err)
+	}
+}
+
 func TestDoctorCmd_Run(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

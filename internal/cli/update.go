@@ -15,7 +15,7 @@ func (c *UpdateCheckCmd) Run(globals *Globals) error {
 	checker := update.New(update.Config{
 		CurrentVersion: version.Version,
 		BinaryName:     version.BinaryName,
-		GitHubRepo:     "grokipedia/cli",
+		GitHubRepo:     "dl-alexandre/Grokipedia-CLI",
 		InstallCommand: "brew upgrade grokipedia",
 	})
 
@@ -33,7 +33,7 @@ func AutoUpdateCheck(cacheInstance interface{}) {
 	checker := update.New(update.Config{
 		CurrentVersion: version.Version,
 		BinaryName:     version.BinaryName,
-		GitHubRepo:     "grokipedia/cli",
+		GitHubRepo:     "dl-alexandre/Grokipedia-CLI",
 		InstallCommand: "brew upgrade grokipedia",
 	})
 	checker.AutoCheck()
