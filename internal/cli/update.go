@@ -87,7 +87,13 @@ func hasFreshUpdateCache(cacheDir string, ttl time.Duration) bool {
 		return false
 	}
 
-	data, err := os.ReadFile(filepath.Join(cacheDir, "update_check.json"))
+	root, err := os.OpenRoot(cacheDir)
+	if err != nil {
+		return false
+	}
+	defer root.Close()
+
+	data, err := root.ReadFile("update_check.json")
 	if err != nil {
 		return false
 	}
