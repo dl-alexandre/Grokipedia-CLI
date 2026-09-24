@@ -2,13 +2,18 @@
 
 This document outlines the current state, completed work, known gaps, and future direction of the Grokipedia CLI.
 
-## Current Status (as of May 2026)
+## Current Status (as of September 2026)
 
 The CLI is in a **mature and usable state** for most public Grokipedia functionality.
 
+The September 22, 2026 Grokipedia v0.2 announcement is a web UI preview, not a
+CLI release or API specification. The CLI independently tracks the live public
+endpoints and now tolerates the current query parameter names, string-valued
+view counts, `/api/page-preview` response, and edit-history shapes.
+
 - **Active implementation**: Located in `internal/cli` (uses the Kong CLI framework).
 - **Legacy implementation**: Located in `cmd/` (Cobra-based). This is deprecated and no longer maintained.
-- All major public API endpoints are supported.
+- Most major public API endpoints are supported; unavailable legacy feeds are documented below.
 
 ### Supported Commands
 
@@ -47,6 +52,9 @@ The CLI is in a **mature and usable state** for most public Grokipedia functiona
 - No support for user authentication / private features (activity, personal suggestions)
 - No article history or version viewing
 - No bulk operations or exports
+- The live site no longer exposes the legacy `/api/constants` endpoint
+- The global edit feed may be unavailable; per-article `edits-by-slug` history is supported
+- The public endpoints are unofficial and may change independently of the CLI release cycle
 
 ### TTS
 - `tts` command only lists sections. Actual audio playback is **out of scope** for now (the API currently only returns section metadata).
@@ -94,4 +102,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on adding new commands, te
 
 ---
 
-*Last updated: May 2026*
+*Last updated: September 2026*

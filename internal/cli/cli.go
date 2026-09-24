@@ -3,9 +3,11 @@ package cli
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +29,7 @@ type CLI struct {
 	Page         PageCmd        `cmd:"" help:"Retrieve a page by slug"`
 	Links        LinksCmd       `cmd:"" help:"List links from a page"`
 	Edits        EditsCmd       `cmd:"" help:"List edit requests"`
+	EditsBySlug  EditsBySlugCmd `cmd:"" name:"edits-by-slug" help:"List edit requests for a page"`
 	Typeahead    TypeaheadCmd   `cmd:"" help:"Typeahead search for page titles"`
 	Constants    ConstantsCmd   `cmd:"" help:"List API constants and enums"`
 	Suggest      SuggestCmd     `cmd:"" help:"Suggest a new article"`
@@ -38,6 +41,7 @@ type CLI struct {
 	Random       RandomCmd      `cmd:"" help:"Show a random page"`
 	Doctor       DoctorCmd      `cmd:"" help:"Run diagnostics (API, cache, config). Try 'grokipedia doctor -v' for details"`
 	Completion   CompletionCmd  `cmd:"" help:"Generate shell completion script"`
+	Version      VersionCmd     `cmd:"" help:"Show version information"`
 	CheckUpdates UpdateCheckCmd `cmd:"" name:"check-updates" help:"Check for available updates"`
 }
 
@@ -146,7 +150,7 @@ func (c *SearchCmd) Run(globals *Globals) error {
 	cacheKey := ""
 	if cache := globals.getCache(); cache != nil {
 		cacheKey = cache.GenerateKey("/api/full-text-search", map[string]interface{}{
-			"q":      c.Query,
+			"query":  c.Query,
 			"limit":  c.Limit,
 			"offset": c.Offset,
 		})
@@ -193,7 +197,7 @@ func (c *PageCmd) Run(globals *Globals) error {
 	// Check cache first
 	cacheKey := ""
 	if cache := globals.getCache(); cache != nil {
-		cacheKey = cache.GenerateKey("/api/page", map[string]interface{}{
+		cacheKey = cache.GenerateKey("/api/page-preview", map[string]interface{}{
 			"slug":           c.Slug,
 			"includeContent": c.Content,
 			"validateLinks":  !c.NoLinks,
@@ -281,6 +285,9 @@ func (c *EditsCmd) Run(globals *Globals) error {
 	client := globals.getClient()
 	results, err := client.Edits(c.Limit, statusList, c.ExcludeUser, c.Counts)
 	if err != nil {
+		if strings.Contains(err.Error(), "server error: 502") {
+			return &api.APIError{Message: "The global edit feed is currently unavailable; use 'grokipedia edits-by-slug SLUG' for per-article history"}
+		}
 		return err
 	}
 
@@ -294,22 +301,80 @@ func (c *EditsCmd) Run(globals *Globals) error {
 	return outputEditsResults(results, c.Format, c.Counts, globals.shouldUseColor())
 }
 
-// TypeaheadCmd handles the typeahead command
+// EditsBySlugCmd lists edit history for one article.
+type EditsBySlugCmd struct {
+	Slug   string `arg:"" help:"Page slug"`
+	Limit  int    `help:"Maximum number of results (1-100)" default:"10"`
+	Offset int    `help:"Offset for pagination" default:"0"`
+	Format string `help:"Output format: table, json" default:"table"`
+}
+
+func (c *EditsBySlugCmd) Run(globals *Globals) error {
+	allowedFormats := []string{"table", "json"}
+	if err := formatter.ValidateFormat(c.Format, allowedFormats); err != nil {
+		return &api.InvalidArgsError{Message: err.Error()}
+	}
+
+	cacheKey := ""
+	if cache := globals.getCache(); cache != nil {
+		cacheKey = cache.GenerateKey("/api/list-edit-requests-by-slug", map[string]interface{}{
+			"slug":   c.Slug,
+			"limit":  c.Limit,
+			"offset": c.Offset,
+		})
+		if data, found := cache.Get(cacheKey); found {
+			var cached api.EditsBySlugResponse
+			if err := json.Unmarshal(data, &cached); err == nil {
+				results := api.EditsResponse(cached)
+				return outputEditsResults(&results, c.Format, true, globals.shouldUseColor())
+			}
+		}
+	}
+
+	results, err := globals.getClient().EditsBySlug(c.Slug, c.Limit, c.Offset)
+	if err != nil {
+		return err
+	}
+
+	if cache := globals.getCache(); cache != nil && cacheKey != "" {
+		if data, err := json.Marshal(results); err == nil {
+			_ = cache.Set(cacheKey, data)
+		}
+	}
+
+	edits := api.EditsResponse(*results)
+	return outputEditsResults(&edits, c.Format, true, globals.shouldUseColor())
+}
+
+// TypeaheadCmd handles the typeahead command.
 type TypeaheadCmd struct {
-	Query string `arg:"" help:"Search query prefix"`
-	Limit int    `help:"Maximum number of results" default:"10"`
+	Query  string `arg:"" help:"Search query prefix"`
+	Limit  int    `help:"Maximum number of results" default:"10"`
+	Format string `help:"Output format: list, json" default:"list"`
 }
 
 func (c *TypeaheadCmd) Run(globals *Globals) error {
+	allowedFormats := []string{"list", "json"}
+	if err := formatter.ValidateFormat(c.Format, allowedFormats); err != nil {
+		return &api.InvalidArgsError{Message: err.Error()}
+	}
+
 	client := globals.getClient()
 	results, err := client.Typeahead(c.Query, c.Limit)
 	if err != nil {
 		return err
 	}
 
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	return enc.Encode(results)
+	if c.Format == "json" {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(results)
+	}
+
+	for _, title := range results.SuggestionTitles() {
+		fmt.Println(title)
+	}
+	return nil
 }
 
 // ConstantsCmd handles the constants command
@@ -321,6 +386,10 @@ func (c *ConstantsCmd) Run(globals *Globals) error {
 	client := globals.getClient()
 	constants, err := client.Constants()
 	if err != nil {
+		var notFound *api.NotFoundError
+		if errors.As(err, &notFound) {
+			return &api.APIError{Message: "Grokipedia no longer exposes /api/constants; use search --format json or inspect the public site instead"}
+		}
 		return err
 	}
 
@@ -329,12 +398,13 @@ func (c *ConstantsCmd) Run(globals *Globals) error {
 	return enc.Encode(constants)
 }
 
-// SuggestCmd handles the suggest command
+// SuggestCmd handles the suggest command.
 type SuggestCmd struct {
-	Title   string `arg:"" help:"Title of the article to suggest"`
-	Content string `help:"Optional content or details for the article suggestion"`
-	Sources string `help:"Optional sources or references (URLs or citations)"`
-	Format  string `help:"Output format: text, json" default:"text"`
+	Title       string `arg:"" help:"Title of the article to suggest"`
+	Description string `help:"Optional details/description for the article suggestion"`
+	Content     string `help:"Deprecated alias for --description"`
+	Sources     string `help:"Optional legacy sources or references"`
+	Format      string `help:"Output format: text, json" default:"text"`
 }
 
 func (c *SuggestCmd) Run(globals *Globals) error {
@@ -349,12 +419,18 @@ func (c *SuggestCmd) Run(globals *Globals) error {
 		return &api.InvalidArgsError{Message: "title cannot be empty"}
 	}
 
-	// Make API request
+	// The current API calls this field description. Keep --content as a
+	// backwards-compatible alias for existing scripts.
+	description := c.Description
+	if description == "" {
+		description = c.Content
+	}
+
 	client := globals.getClient()
 	req := &api.SuggestArticleRequest{
-		Title:   c.Title,
-		Content: c.Content,
-		Sources: c.Sources,
+		Title:       c.Title,
+		Description: description,
+		Sources:     c.Sources,
 	}
 
 	resp, err := client.SuggestArticle(req)
@@ -386,10 +462,14 @@ func outputSuggestResults(resp *api.SuggestArticleResponse, format string, title
 			fmt.Println("Note: Grokipedia articles are generated by AI based on suggestions.")
 		} else {
 			fmt.Printf("✗ Failed to submit suggestion for '%s'\n", title)
-			if resp.Message != "" {
-				fmt.Printf("  Reason: %s\n", resp.Message)
+			reason := resp.Message
+			if reason == "" {
+				reason = resp.Error
 			}
-			return &api.InvalidArgsError{Message: resp.Message}
+			if reason != "" {
+				fmt.Printf("  Reason: %s\n", reason)
+			}
+			return &api.InvalidArgsError{Message: reason}
 		}
 		return nil
 
@@ -566,6 +646,27 @@ func (c *RandomCmd) Run(globals *Globals) error {
 	}
 }
 
+// articleBody removes the API's redundant leading title heading when the CLI
+// already prints the title itself.
+func articleBody(content, title string) string {
+	trimmed := strings.TrimSpace(content)
+	prefix := "# " + strings.TrimSpace(title)
+	if !strings.HasPrefix(trimmed, prefix) {
+		return content
+	}
+
+	remainder := strings.TrimPrefix(trimmed, prefix)
+	if remainder != "" {
+		switch remainder[0] {
+		case '\n', '\r', ' ', '\t':
+			return strings.TrimSpace(remainder)
+		default:
+			return content
+		}
+	}
+	return ""
+}
+
 // outputRandomFullPage handles the --content case for random
 func outputRandomFullPage(pageResp *api.PageResponse, format string) error {
 	// Minimal reuse of existing page output style
@@ -579,8 +680,8 @@ func outputRandomFullPage(pageResp *api.PageResponse, format string) error {
 		if pageResp.Page.Description != "" {
 			fmt.Printf("%s\n\n", pageResp.Page.Description)
 		}
-		if pageResp.Page.Content != "" {
-			fmt.Println(pageResp.Page.Content)
+		if body := articleBody(pageResp.Page.Content, pageResp.Page.Title); body != "" {
+			fmt.Println(body)
 		}
 		fmt.Printf("\n**Slug:** %s | **Views:** %d | **Quality:** %.2f\n", pageResp.Page.Slug, pageResp.Page.Stats.TotalViews, pageResp.Page.Stats.QualityScore)
 		return nil
@@ -690,7 +791,7 @@ func outputPreviewResults(resp *api.PagePreviewResponse, format string) error {
 			fmt.Printf("%s\n\n", resp.Page.Description)
 		}
 		if resp.Page.Content != "" {
-			content := resp.Page.Content
+			content := articleBody(resp.Page.Content, resp.Page.Title)
 			if len(content) > 800 {
 				content = content[:800] + "...\n\n*(content truncated — use 'page' command for full text)*"
 			}
@@ -864,14 +965,18 @@ func (c *DoctorCmd) Run(globals *Globals) error {
 	return nil
 }
 
-// EditCmd submits an edit suggestion for an existing article
+// EditCmd submits an edit suggestion for an existing article.
 type EditCmd struct {
-	Slug         string `arg:"" help:"Slug of the article to edit"`
-	Summary      string `help:"Short summary of the proposed change (REQUIRED)"`
-	Content      string `help:"Proposed replacement content"`
-	Sources      string `help:"Supporting sources / references (optional)"`
-	OriginalText string `help:"The original text being corrected (recommended for precision)"`
-	Format       string `help:"Output format: text, json" default:"text"`
+	Slug            string   `arg:"" help:"Slug of the article to edit"`
+	Summary         string   `help:"Short summary of the proposed change (REQUIRED)"`
+	ProposedContent string   `help:"Proposed replacement content"`
+	OriginalContent string   `help:"The original text being corrected (recommended for precision)"`
+	SectionTitle    string   `help:"Section containing the proposed change"`
+	Evidence        []string `help:"Supporting source URL (repeatable)"`
+	Content         string   `help:"Deprecated alias for --proposed-content"`
+	OriginalText    string   `help:"Deprecated alias for --original-content"`
+	Sources         string   `help:"Deprecated comma/space-separated source URLs"`
+	Format          string   `help:"Output format: text, json" default:"text"`
 }
 
 func (c *EditCmd) Run(globals *Globals) error {
@@ -879,13 +984,34 @@ func (c *EditCmd) Run(globals *Globals) error {
 		return &api.InvalidArgsError{Message: "--summary is required for edit suggestions"}
 	}
 
+	proposedContent := c.ProposedContent
+	if proposedContent == "" {
+		proposedContent = c.Content
+	}
+	originalContent := c.OriginalContent
+	if originalContent == "" {
+		originalContent = c.OriginalText
+	}
+
+	evidence := make([]api.SupportingEvidence, 0, len(c.Evidence))
+	for _, source := range c.Evidence {
+		if source = strings.TrimSpace(source); source != "" {
+			evidence = append(evidence, api.SupportingEvidence{URL: source})
+		}
+	}
+	if len(evidence) == 0 {
+		evidence = parseEvidenceSources(c.Sources)
+	}
+
 	client := globals.getClient()
 	req := &api.CreateEditRequest{
-		Slug:         c.Slug,
-		Summary:      c.Summary,
-		Content:      c.Content,
-		Sources:      c.Sources,
-		OriginalText: c.OriginalText,
+		Slug:               c.Slug,
+		Type:               1,
+		Summary:            c.Summary,
+		OriginalContent:    originalContent,
+		ProposedContent:    proposedContent,
+		SectionTitle:       c.SectionTitle,
+		SupportingEvidence: evidence,
 	}
 
 	resp, err := client.CreateEditRequest(req)
@@ -899,6 +1025,19 @@ func (c *EditCmd) Run(globals *Globals) error {
 	}
 
 	return outputEditResults(resp, c.Format, c.Slug)
+}
+
+func parseEvidenceSources(value string) []api.SupportingEvidence {
+	parts := strings.FieldsFunc(value, func(r rune) bool {
+		return r == ',' || r == ';' || r == '\n' || r == '\t' || r == ' '
+	})
+	evidence := make([]api.SupportingEvidence, 0, len(parts))
+	for _, part := range parts {
+		if part = strings.TrimSpace(part); part != "" {
+			evidence = append(evidence, api.SupportingEvidence{URL: part})
+		}
+	}
+	return evidence
 }
 
 // outputEditResults handles formatting for the edit command
@@ -920,14 +1059,18 @@ func outputEditResults(resp *api.CreateEditResponse, format string, slug string)
 			fmt.Println("If this failed with 'Authentication required', please sign in via the website first.")
 		} else {
 			fmt.Printf("✗ Failed to submit edit for '%s'\n", slug)
-			if resp.Message != "" {
-				fmt.Printf("  Reason: %s\n", resp.Message)
+			reason := resp.Message
+			if reason == "" {
+				reason = resp.Error
 			}
-			if strings.Contains(strings.ToLower(resp.Message), "auth") || strings.Contains(resp.Message, "Authentication") {
+			if reason != "" {
+				fmt.Printf("  Reason: %s\n", reason)
+			}
+			if strings.Contains(strings.ToLower(reason), "auth") || strings.Contains(reason, "Authentication") {
 				fmt.Println("\nThis action requires you to be signed in with an xAI account.")
 				fmt.Println("Visit https://grokipedia.com and sign in, then try again (or use the web UI).")
 			}
-			return &api.InvalidArgsError{Message: resp.Message}
+			return &api.InvalidArgsError{Message: reason}
 		}
 		return nil
 	default:
@@ -962,7 +1105,7 @@ func (c *LinksCmd) Run(globals *Globals) error {
 
 	// Make API request
 	client := globals.getClient()
-	result, err := client.Page(c.Slug, false, true)
+	result, err := client.Page(c.Slug, true, true)
 	if err != nil {
 		return err
 	}
@@ -984,34 +1127,58 @@ func (c *LinksCmd) Run(globals *Globals) error {
 	return outputLinksResults(links, outputFormat, c.Slug, result.Page.Title, globals.shouldUseColor())
 }
 
-// extractLinks extracts links from page data based on filters
+var pageLinkPattern = regexp.MustCompile(`\]\(/page/([^ \t\r\n]+)\)`)
+
+// extractLinks extracts links from page data based on filters.
 func extractLinks(page api.PageData, internalOnly, externalOnly bool) []Link {
 	var links []Link
+	seen := make(map[string]struct{})
 
-	// Add internal links (indexed slugs)
+	addInternal := func(slug, source string) {
+		slug = strings.TrimSpace(slug)
+		if index := strings.IndexAny(slug, "?#"); index >= 0 {
+			slug = slug[:index]
+		}
+		if slug == "" {
+			return
+		}
+		key := "internal:" + slug
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		links = append(links, Link{
+			Type:   "internal",
+			Slug:   slug,
+			Title:  slug,
+			Source: source,
+		})
+	}
+
+	// Add internal links supplied by older API responses.
 	if !externalOnly {
 		for _, slug := range page.LinkedPages.IndexedSlugs {
-			links = append(links, Link{
-				Type:   "internal",
-				Slug:   slug,
-				Title:  slug,
-				Source: "linked",
-			})
+			addInternal(slug, "linked")
 		}
-		// Add unindexed slugs
 		for _, slug := range page.LinkedPages.UnindexedSlugs {
-			links = append(links, Link{
-				Type:   "internal",
-				Slug:   slug,
-				Title:  slug,
-				Source: "unindexed",
-			})
+			addInternal(slug, "unindexed")
+		}
+
+		// The current page-preview response does not return linkedPages. Recover
+		// internal links from the markdown content instead.
+		for _, match := range pageLinkPattern.FindAllStringSubmatch(page.Content, -1) {
+			if len(match) > 1 {
+				addInternal(match[1], "content")
+			}
 		}
 	}
 
-	// Add external links (citations)
+	// Add external links (citations).
 	if !internalOnly {
 		for _, citation := range page.Citations {
+			if citation.URL == "" {
+				continue
+			}
 			links = append(links, Link{
 				Type:   "external",
 				Title:  citation.Title,
@@ -1155,6 +1322,10 @@ func (c *CompletionCmd) Run() error {
 	return nil
 }
 
+// VersionCmd is kept as a command so the version is available without making
+// network calls or requiring a configuration file.
+type VersionCmd struct{}
+
 // Helper functions for output formatting
 
 func outputSearchResults(results *api.SearchResponse, format string, useColor bool) error {
@@ -1224,7 +1395,7 @@ func outputPageResults(result *api.PageResponse, format string, showContent bool
 		}
 
 		if showContent && page.Content != "" {
-			fmt.Println(page.Content)
+			fmt.Println(articleBody(page.Content, page.Title))
 			fmt.Println()
 		}
 
@@ -1250,7 +1421,7 @@ func outputPageResults(result *api.PageResponse, format string, showContent bool
 
 		if showContent && page.Content != "" {
 			fmt.Println("\nContent:")
-			fmt.Println(page.Content)
+			fmt.Println(articleBody(page.Content, page.Title))
 		}
 
 		fmt.Printf("\nSlug: %s\n", page.Slug)
@@ -1285,9 +1456,20 @@ func outputEditsResults(results *api.EditsResponse, format string, showCounts bo
 		}
 
 		for _, edit := range results.EditRequests {
-			timestamp := time.Unix(edit.Timestamp, 0).Format("2006-01-02 15:04")
+			timestampValue := edit.Timestamp
+			if timestampValue == 0 {
+				timestampValue = edit.CreatedAt
+			}
+			editor := edit.Editor
+			if editor == "" {
+				editor = edit.UserID
+			}
+			timestamp := "-"
+			if timestampValue > 0 {
+				timestamp = time.Unix(timestampValue, 0).Format("2006-01-02 15:04")
+			}
 			status := strings.TrimPrefix(edit.Status, "EDIT_REQUEST_STATUS_")
-			tbl.AddRow(edit.ID, edit.Slug, status, edit.Editor, timestamp)
+			tbl.AddRow(edit.ID, edit.Slug, status, editor, timestamp)
 		}
 
 		tbl.Print()

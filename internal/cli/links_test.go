@@ -88,6 +88,23 @@ func TestExtractLinksExternalOnly(t *testing.T) {
 	}
 }
 
+func TestExtractLinksFromCurrentPageContent(t *testing.T) {
+	page := api.PageData{
+		Content: "See [Python](/page/Python_programming_language) and [the docs](https://python.org).",
+		Citations: []api.Citation{
+			{ID: "1", Title: "Python docs", URL: "https://docs.python.org"},
+		},
+	}
+
+	links := extractLinks(page, false, false)
+	if len(links) != 2 {
+		t.Fatalf("Expected one internal link and one citation, got %d", len(links))
+	}
+	if links[0].Type != "internal" || links[0].Slug != "Python_programming_language" {
+		t.Errorf("Unexpected internal link: %+v", links[0])
+	}
+}
+
 func TestExtractLinksEmpty(t *testing.T) {
 	page := api.PageData{
 		LinkedPages: api.LinkedPages{},

@@ -59,7 +59,7 @@ func TestClientSearch(t *testing.T) {
 		}
 
 		// Check query params
-		q := r.URL.Query().Get("q")
+		q := r.URL.Query().Get("query")
 		if q != "test query" {
 			t.Errorf("Expected query 'test query', got %s", q)
 		}
@@ -103,10 +103,27 @@ func TestClientSearch(t *testing.T) {
 	}
 }
 
+func TestClientSearchAcceptsCurrentStringViewCount(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"results":[{"title":"Current Page","slug":"Current_Page","snippet":"...","relevanceScore":12.5,"viewCount":"246"}],"totalCount":1,"searchTimeMs":3.2}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{BaseURL: server.URL})
+	result, err := client.Search("current", 1, 0)
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if result.Results[0].ViewCount != 246 {
+		t.Errorf("Expected string viewCount to decode as 246, got %d", result.Results[0].ViewCount)
+	}
+}
+
 func TestClientPage(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/page" {
-			t.Errorf("Expected path /api/page, got %s", r.URL.Path)
+		if r.URL.Path != "/api/page-preview" {
+			t.Errorf("Expected path /api/page-preview, got %s", r.URL.Path)
 		}
 
 		slug := r.URL.Query().Get("slug")
@@ -146,6 +163,29 @@ func TestClientPage(t *testing.T) {
 	}
 }
 
+func TestClientPageAcceptsCurrentPreviewShape(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/page-preview" {
+			t.Errorf("Expected path /api/page-preview, got %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"found":true,"page":{"slug":"Current_Page","title":"Current Page","content":"# Current Page","description":"Description","citations":[],"images":[],"metadata":{"categories":["Test"],"lastModified":1774887729,"contentLength":12,"version":"1.0"},"stats":{"totalViews":"9001","dailyAvgViews":2.5,"qualityScore":0.9}}}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{BaseURL: server.URL})
+	result, err := client.Page("Current_Page", true, true)
+	if err != nil {
+		t.Fatalf("Page() error = %v", err)
+	}
+	if result.Page.Stats.TotalViews != 9001 {
+		t.Errorf("Expected current string totalViews to decode as 9001, got %d", result.Page.Stats.TotalViews)
+	}
+	if result.Page.Content != "# Current Page" {
+		t.Errorf("Expected page content, got %q", result.Page.Content)
+	}
+}
+
 func TestClientPageNotFound(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -173,9 +213,15 @@ func TestClientTypeahead(t *testing.T) {
 		if r.URL.Path != "/api/typeahead" {
 			t.Errorf("Expected path /api/typeahead, got %s", r.URL.Path)
 		}
+		if r.URL.Query().Get("query") != "pyt" {
+			t.Errorf("Expected query pyt, got %s", r.URL.Query().Get("query"))
+		}
 
 		response := TypeaheadResponse{
-			Suggestions: []string{"python", "python programming"},
+			Results: []SearchResult{
+				{Title: "python", Slug: "python"},
+				{Title: "python programming", Slug: "python_programming"},
+			},
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -193,8 +239,11 @@ func TestClientTypeahead(t *testing.T) {
 		t.Fatalf("Typeahead() error = %v", err)
 	}
 
-	if len(result.Suggestions) != 2 {
-		t.Errorf("Expected 2 suggestions, got %d", len(result.Suggestions))
+	if len(result.Results) != 2 {
+		t.Errorf("Expected 2 results, got %d", len(result.Results))
+	}
+	if titles := result.SuggestionTitles(); len(titles) != 2 || titles[0] != "python" {
+		t.Errorf("Unexpected typeahead titles: %v", titles)
 	}
 }
 
@@ -311,6 +360,24 @@ func TestClientEditsBySlug(t *testing.T) {
 
 	if len(result.EditRequests) != 1 {
 		t.Errorf("Expected 1 edit request, got %d", len(result.EditRequests))
+	}
+}
+
+func TestClientEditsBySlugAcceptsCurrentFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"editRequests":[{"id":"edit-1","slug":"Test_page","userId":"user-1","status":"EDIT_REQUEST_STATUS_APPROVED","type":"EDIT_REQUEST_TYPE_UPDATE_INFORMATION","summary":"Fix text","originalContent":"old","proposedContent":"new","sectionTitle":"Intro","createdAt":1774887701,"updatedAt":1774887729,"upvoteCount":1,"downvoteCount":0}],"totalCount":1,"hasMore":false}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{BaseURL: server.URL})
+	result, err := client.EditsBySlug("Test_page", 1, 0)
+	if err != nil {
+		t.Fatalf("EditsBySlug() error = %v", err)
+	}
+	edit := result.EditRequests[0]
+	if edit.UserID != "user-1" || edit.Summary != "Fix text" || edit.CreatedAt != 1774887701 {
+		t.Errorf("Current edit fields were not decoded: %+v", edit)
 	}
 }
 
@@ -499,6 +566,30 @@ func TestClientSuggestArticle(t *testing.T) {
 
 	if result.Status != "PENDING" {
 		t.Errorf("Expected status 'PENDING', got %s", result.Status)
+	}
+}
+
+func TestClientSuggestArticleUsesCurrentDescriptionField(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatalf("Failed to decode request body: %v", err)
+		}
+		if payload["description"] != "Details" {
+			t.Errorf("Expected description Details, got %v", payload["description"])
+		}
+		if _, ok := payload["content"]; ok {
+			t.Error("Current article request should not include deprecated content field")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true,"status":"PENDING"}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{BaseURL: server.URL})
+	_, err := client.SuggestArticle(&SuggestArticleRequest{Title: "Topic", Description: "Details"})
+	if err != nil {
+		t.Fatalf("SuggestArticle() error = %v", err)
 	}
 }
 
@@ -741,6 +832,42 @@ func TestClientCreateEditRequest(t *testing.T) {
 	}
 	if result.ID != "edit-456" {
 		t.Errorf("Expected ID 'edit-456', got %s", result.ID)
+	}
+}
+
+func TestClientCreateEditRequestUsesCurrentPayload(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatalf("Failed to decode request body: %v", err)
+		}
+		if payload["type"] != float64(1) {
+			t.Errorf("Expected type 1, got %v", payload["type"])
+		}
+		if payload["proposedContent"] != "new text" {
+			t.Errorf("Expected proposedContent new text, got %v", payload["proposedContent"])
+		}
+		evidence, ok := payload["supportingEvidence"].([]interface{})
+		if !ok || len(evidence) != 1 {
+			t.Errorf("Expected one supporting evidence item, got %v", payload["supportingEvidence"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientOptions{BaseURL: server.URL})
+	_, err := client.CreateEditRequest(&CreateEditRequest{
+		Slug:               "Test_page",
+		Type:               1,
+		Summary:            "Fix text",
+		OriginalContent:    "old text",
+		ProposedContent:    "new text",
+		SectionTitle:       "Intro",
+		SupportingEvidence: []SupportingEvidence{{URL: "https://example.com"}},
+	})
+	if err != nil {
+		t.Fatalf("CreateEditRequest() error = %v", err)
 	}
 }
 

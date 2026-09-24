@@ -114,6 +114,19 @@ func TestPageResponseSerialization(t *testing.T) {
 	}
 }
 
+func TestTypeaheadResponseCurrentShape(t *testing.T) {
+	var response TypeaheadResponse
+	if err := json.Unmarshal([]byte(`{"results":[{"title":"Python","slug":"Python_programming_language","snippet":"...","relevanceScore":10,"viewCount":"12"}]}`), &response); err != nil {
+		t.Fatalf("Failed to unmarshal current typeahead response: %v", err)
+	}
+	if titles := response.SuggestionTitles(); len(titles) != 1 || titles[0] != "Python" {
+		t.Errorf("Unexpected current typeahead titles: %v", titles)
+	}
+	if response.Results[0].ViewCount != 12 {
+		t.Errorf("Expected viewCount 12, got %d", response.Results[0].ViewCount)
+	}
+}
+
 func TestTypeaheadResponseSerialization(t *testing.T) {
 	response := TypeaheadResponse{
 		Suggestions: []string{"python", "python programming", "python tutorial"},
