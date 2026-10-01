@@ -6,10 +6,11 @@ This document outlines the current state, completed work, known gaps, and future
 
 The CLI is in a **mature and usable state** for most public Grokipedia functionality.
 
-The September 22, 2026 Grokipedia v0.2 announcement is a web UI preview, not a
-CLI release or API specification. The CLI independently tracks the live public
-endpoints and now tolerates the current query parameter names, string-valued
-view counts, `/api/page-preview` response, and edit-history shapes.
+The Grokipedia website currently displays v0.3. This is a web version label, not
+a CLI release or API specification. The CLI independently tracks the live
+public endpoints and now tolerates the current query parameter names,
+string-valued view counts, numeric or string image positions,
+`/api/page-preview` response, and edit-history shapes.
 
 - **Active implementation**: Located in `internal/cli` (uses the Kong CLI framework).
 - **Legacy implementation**: Located in `cmd/` (Cobra-based). This is deprecated and no longer maintained.

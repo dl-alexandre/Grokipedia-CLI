@@ -114,6 +114,27 @@ func TestPageResponseSerialization(t *testing.T) {
 	}
 }
 
+func TestImagePositionAcceptsStringAndNumber(t *testing.T) {
+	var response struct {
+		Images []Image `json:"images"`
+	}
+
+	data := []byte(`{"images":[
+		{"id":"legacy","caption":"Legacy","url":"legacy.jpg","position":"hero"},
+		{"id":"current","caption":"Current","url":"current.jpg","position":1}
+	]}`)
+	if err := json.Unmarshal(data, &response); err != nil {
+		t.Fatalf("Failed to unmarshal mixed image positions: %v", err)
+	}
+
+	if got := response.Images[0].Position; got != "hero" {
+		t.Errorf("Expected legacy position %q, got %q", "hero", got)
+	}
+	if got := response.Images[1].Position; got != "1" {
+		t.Errorf("Expected numeric position %q, got %q", "1", got)
+	}
+}
+
 func TestTypeaheadResponseCurrentShape(t *testing.T) {
 	var response TypeaheadResponse
 	if err := json.Unmarshal([]byte(`{"results":[{"title":"Python","slug":"Python_programming_language","snippet":"...","relevanceScore":10,"viewCount":"12"}]}`), &response); err != nil {
