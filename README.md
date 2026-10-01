@@ -104,17 +104,16 @@ All configuration options can be set via environment variables:
 
 ## Current API compatibility (September 2026)
 
-The September 22, 2026 Grokipedia v0.2 announcement is a **web product
-preview**; it does not announce a Grokipedia CLI v0.2 release or a stable public
-API contract. The CLI remains independently versioned and currently targets
-the live public endpoints, which have changed independently of that
-announcement.
+The Grokipedia website currently displays **v0.3**. This is a web product
+version, not a Grokipedia CLI release; the CLI remains independently versioned
+and currently targets the live public endpoints.
 
 The current client handles the live API shapes and older compatible deployments where practical:
 
 - Search and typeahead use the current `query` parameter (with a legacy `q` fallback for search).
 - Full pages use `/api/page-preview`; `/api/page` is retained as a fallback for older deployments.
 - Search and page view counts are accepted as either JSON strings or numbers.
+- Image positions are accepted as either JSON strings or numbers.
 - Typeahead returns result objects rather than a legacy `suggestions` string array.
 - Edit-history results use the current `userId`, `createdAt`, and review fields.
 - Article and edit submissions use the current description/evidence payload fields.

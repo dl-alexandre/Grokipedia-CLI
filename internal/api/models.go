@@ -125,6 +125,37 @@ type Image struct {
 	Height   int    `json:"height,omitempty"`
 }
 
+// UnmarshalJSON accepts both the string position used by older API responses
+// and the numeric position returned by the current v0.3 site.
+func (i *Image) UnmarshalJSON(data []byte) error {
+	var wire struct {
+		ID       string          `json:"id"`
+		Caption  string          `json:"caption"`
+		URL      string          `json:"url"`
+		Position json.RawMessage `json:"position"`
+		Width    int             `json:"width"`
+		Height   int             `json:"height"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+
+	position, err := parseJSONText(wire.Position)
+	if err != nil {
+		return fmt.Errorf("image position: %w", err)
+	}
+
+	*i = Image{
+		ID:       wire.ID,
+		Caption:  wire.Caption,
+		URL:      wire.URL,
+		Position: position,
+		Width:    wire.Width,
+		Height:   wire.Height,
+	}
+	return nil
+}
+
 // PageMetadata represents page metadata.
 type PageMetadata struct {
 	Categories     []string `json:"categories"`
@@ -426,6 +457,24 @@ func parseJSONInt(raw json.RawMessage) (int, error) {
 	}
 
 	return 0, fmt.Errorf("expected an integer or numeric string")
+}
+
+func parseJSONText(raw json.RawMessage) (string, error) {
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return "", nil
+	}
+
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		return text, nil
+	}
+
+	var number json.Number
+	if err := json.Unmarshal(raw, &number); err == nil {
+		return number.String(), nil
+	}
+
+	return "", fmt.Errorf("expected a string or number")
 }
 
 func parseIntString(value string) int {
